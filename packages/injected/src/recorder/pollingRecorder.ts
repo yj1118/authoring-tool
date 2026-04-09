@@ -28,6 +28,7 @@ interface Embedder {
   __pw_recorderElementPicked(element: { selector: string, ariaSnapshot?: string }): Promise<void>;
   __pw_recorderSetMode(mode: Mode): Promise<void>;
   __pw_recorderSetOverlayState(state: OverlayState): Promise<void>;
+  __pw_recorderCloseBrowsers(): Promise<void>;
   __pw_refreshOverlay(): void;
 }
 
@@ -94,6 +95,10 @@ export class PollingRecorder implements RecorderDelegate {
 
   async setOverlayState(state: OverlayState): Promise<void> {
     await this._embedder.__pw_recorderSetOverlayState(state);
+  }
+
+  async closeBrowsers(): Promise<void> {
+    await this._embedder.__pw_recorderCloseBrowsers();
   }
 }
 

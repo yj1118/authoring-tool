@@ -1956,7 +1956,7 @@ export type BrowserContextPauseOptions = {};
 export type BrowserContextPauseResult = void;
 export type BrowserContextEnableRecorderParams = {
   language?: string,
-  mode?: 'inspecting' | 'recording',
+  mode?: 'none' | 'inspecting' | 'recording',
   recorderMode?: 'default' | 'api',
   pauseOnNextStatement?: boolean,
   testIdAttributeName?: string,
@@ -1967,10 +1967,11 @@ export type BrowserContextEnableRecorderParams = {
   outputFile?: string,
   handleSIGINT?: boolean,
   omitCallTracking?: boolean,
+  hideInspector?: boolean,
 };
 export type BrowserContextEnableRecorderOptions = {
   language?: string,
-  mode?: 'inspecting' | 'recording',
+  mode?: 'none' | 'inspecting' | 'recording',
   recorderMode?: 'default' | 'api',
   pauseOnNextStatement?: boolean,
   testIdAttributeName?: string,
@@ -1981,6 +1982,7 @@ export type BrowserContextEnableRecorderOptions = {
   outputFile?: string,
   handleSIGINT?: boolean,
   omitCallTracking?: boolean,
+  hideInspector?: boolean,
 };
 export type BrowserContextEnableRecorderResult = void;
 export type BrowserContextDisableRecorderParams = {};

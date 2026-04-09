@@ -212,6 +212,12 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
         this._overlayState = state;
       });
 
+      await this._context.exposeBinding(progress, '__pw_recorderCloseBrowsers', false, async ({ frame }) => {
+        if (frame.parentFrame())
+          return;
+        await this._context._browser.close(progress, { reason: 'Closed from recorder overlay' });
+      });
+
       await this._context.exposeBinding(progress, '__pw_resume', false, () => {
         this._debugger.resume();
       });

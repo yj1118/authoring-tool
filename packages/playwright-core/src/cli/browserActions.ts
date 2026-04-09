@@ -254,10 +254,11 @@ export async function codegen(options: Options & { target: string, output?: stri
     contextOptions,
     device: options.device,
     saveStorage: options.saveStorage,
-    mode: 'recording',
+    mode: 'none',
     testIdAttributeName,
     outputFile: outputFile ? path.resolve(outputFile) : undefined,
     handleSIGINT: false,
+    hideInspector: true,
   });
   await openPage(context, url);
   donePromise.resolve();

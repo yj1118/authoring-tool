@@ -1410,6 +1410,7 @@ BrowserContext:
         mode:
           type: enum?
           literals:
+          - none
           - inspecting
           - recording
         recorderMode:
@@ -1426,6 +1427,7 @@ BrowserContext:
         outputFile: string?
         handleSIGINT: boolean?
         omitCallTracking: boolean?
+        hideInspector: boolean?
 
     disableRecorder:
       internal: true

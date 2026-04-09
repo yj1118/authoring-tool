@@ -177,9 +177,9 @@ export class RecorderApp {
   }
 
   static async show(context: BrowserContext, params: channels.BrowserContextEnableRecorderParams) {
-    if (process.env.PW_CODEGEN_NO_INSPECTOR)
-      return;
     const recorder = await Recorder.forContext(context, params);
+    if (process.env.PW_CODEGEN_NO_INSPECTOR || params.hideInspector)
+      return;
     if (params.recorderMode === 'api') {
       const browserName = context._browser.options.name;
       await ProgrammaticRecorderApp.run(context, recorder, browserName, params);

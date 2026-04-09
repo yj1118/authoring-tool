@@ -20,6 +20,78 @@
   flex: auto;
 }
 
+.selector-authoring-main {
+  display: flex;
+  flex-direction: column;
+  flex: auto;
+  min-height: 0;
+}
+
+.selector-authoring-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.selector-authoring-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.selector-authoring-copy {
+  min-width: 0;
+}
+
+.selector-authoring-subtitle {
+  margin-top: 4px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.selector-authoring-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.selector-authoring-format {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.selector-authoring-format select {
+  min-width: 140px;
+  border: 1px solid var(--vscode-dropdown-border);
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.selector-authoring-page {
+  max-width: 50%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vscode-descriptionForeground);
+}
+
+.selector-authoring-editor {
+  flex: auto;
+  min-height: 0;
+}
+
+.selector-authoring-status {
+  color: var(--vscode-descriptionForeground);
+}
+
 .recorder-chooser {
   border: none;
   background: none;

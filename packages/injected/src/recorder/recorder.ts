@@ -40,6 +40,7 @@ export interface RecorderDelegate {
   elementPicked?(elementInfo: ElementInfo): Promise<void>;
   setMode?(mode: Mode): Promise<void>;
   setOverlayState?(state: OverlayState): Promise<void>;
+  closeBrowsers?(): Promise<void>;
   highlightUpdated?(): void;
 }
 
@@ -86,14 +87,21 @@ class InspectTool implements RecorderTool {
   uninstall() {
     this._hoveredModel = null;
     this._hoveredElement = null;
+    this._recorder.previewInspectedModel(null);
   }
 
   onClick(event: MouseEvent) {
     consumeEvent(event);
     if (event.button !== 0)
       return;
-    if (this._hoveredModel?.selector)
+    if (this._assertVisibility && this._hoveredModel?.selector)
       this._commit(this._hoveredModel.selector, this._hoveredModel);
+    else if (this._hoveredModel?.selector)
+      this._recorder.pickHoveredSelector(this._hoveredModel);
+  }
+
+  onDblClick(event: MouseEvent) {
+    consumeEvent(event);
   }
 
   onPointerDown(event: PointerEvent) {
@@ -127,7 +135,7 @@ class InspectTool implements RecorderTool {
       model = {
         selector: generated.selector,
         elements: generated.elements,
-        tooltipText: this._recorder.injectedScript.utils.asLocator(this._recorder.state.language, generated.selector),
+        tooltipText: generated.selector,
         color: this._assertVisibility ? HighlightColors.assert : HighlightColors.single,
       };
     }
@@ -135,6 +143,7 @@ class InspectTool implements RecorderTool {
     if (this._hoveredModel?.selector === model?.selector)
       return;
     this._hoveredModel = model;
+    this._recorder.previewInspectedModel(model);
     this._recorder.updateHighlight(model, true);
   }
 
@@ -155,6 +164,8 @@ class InspectTool implements RecorderTool {
     if (event.key === 'Escape') {
       if (this._assertVisibility)
         this._recorder.setMode('recording');
+      else
+        this._recorder.cancelSelectorPicking();
     }
   }
 
@@ -183,6 +194,7 @@ class InspectTool implements RecorderTool {
   private _reset(userGesture: boolean) {
     this._hoveredElement = null;
     this._hoveredModel = null;
+    this._recorder.previewInspectedModel(null);
     this._recorder.updateHighlight(null, userGesture);
   }
 }
@@ -1161,12 +1173,8 @@ class Overlay {
   private _listeners: (() => void)[] = [];
   private _overlayElement: HTMLElement;
   private _dragHandle: HTMLElement;
-  private _recordToggle: HTMLElement;
   private _pickLocatorToggle: HTMLElement;
-  private _assertVisibilityToggle: HTMLElement;
-  private _assertTextToggle: HTMLElement;
-  private _assertValuesToggle: HTMLElement;
-  private _assertSnapshotToggle: HTMLElement;
+  private _closeToggle: HTMLElement;
   private _offsetX = 0;
   private _dragState: { offsetX: number, dragStart: { x: number, y: number } } | undefined;
   private _measure: { width: number, height: number } = { width: 0, height: 0 };
@@ -1182,41 +1190,17 @@ class Overlay {
     this._dragHandle.appendChild(document.createElement('x-div'));
     toolsListElement.appendChild(this._dragHandle);
 
-    this._recordToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._recordToggle.title = 'Record';
-    this._recordToggle.classList.add('record');
-    this._recordToggle.appendChild(this._recorder.document.createElement('x-div'));
-    toolsListElement.appendChild(this._recordToggle);
-
     this._pickLocatorToggle = this._recorder.document.createElement('x-pw-tool-item');
     this._pickLocatorToggle.title = 'Pick locator';
     this._pickLocatorToggle.classList.add('pick-locator');
     this._pickLocatorToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._pickLocatorToggle);
 
-    this._assertVisibilityToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertVisibilityToggle.title = 'Assert visibility';
-    this._assertVisibilityToggle.classList.add('visibility');
-    this._assertVisibilityToggle.appendChild(this._recorder.document.createElement('x-div'));
-    toolsListElement.appendChild(this._assertVisibilityToggle);
-
-    this._assertTextToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertTextToggle.title = 'Assert text';
-    this._assertTextToggle.classList.add('text');
-    this._assertTextToggle.appendChild(this._recorder.document.createElement('x-div'));
-    toolsListElement.appendChild(this._assertTextToggle);
-
-    this._assertValuesToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertValuesToggle.title = 'Assert value';
-    this._assertValuesToggle.classList.add('value');
-    this._assertValuesToggle.appendChild(this._recorder.document.createElement('x-div'));
-    toolsListElement.appendChild(this._assertValuesToggle);
-
-    this._assertSnapshotToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertSnapshotToggle.title = 'Assert snapshot';
-    this._assertSnapshotToggle.classList.add('snapshot');
-    this._assertSnapshotToggle.appendChild(this._recorder.document.createElement('x-div'));
-    toolsListElement.appendChild(this._assertSnapshotToggle);
+    this._closeToggle = this._recorder.document.createElement('x-pw-tool-item');
+    this._closeToggle.title = 'Close browsers';
+    this._closeToggle.classList.add('cancel');
+    this._closeToggle.appendChild(this._recorder.document.createElement('x-div'));
+    toolsListElement.appendChild(this._closeToggle);
 
     this._updateVisualPosition();
     this._refreshListeners();
@@ -1227,11 +1211,6 @@ class Overlay {
     this._listeners = [
       addEventListener(this._dragHandle, 'mousedown', event => {
         this._dragState = { offsetX: this._offsetX, dragStart: { x: (event as MouseEvent).clientX, y: 0 } };
-      }),
-      addEventListener(this._recordToggle, 'click', () => {
-        if (this._recordToggle.classList.contains('disabled'))
-          return;
-        this._recorder.setMode(this._recorder.state.mode === 'none' || this._recorder.state.mode === 'standby' || this._recorder.state.mode === 'inspecting' ? 'recording' : 'standby');
       }),
       addEventListener(this._pickLocatorToggle, 'click', () => {
         if (this._pickLocatorToggle.classList.contains('disabled'))
@@ -1249,21 +1228,8 @@ class Overlay {
         };
         this._recorder.setMode(newMode[this._recorder.state.mode]);
       }),
-      addEventListener(this._assertVisibilityToggle, 'click', () => {
-        if (!this._assertVisibilityToggle.classList.contains('disabled'))
-          this._recorder.setMode(this._recorder.state.mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility');
-      }),
-      addEventListener(this._assertTextToggle, 'click', () => {
-        if (!this._assertTextToggle.classList.contains('disabled'))
-          this._recorder.setMode(this._recorder.state.mode === 'assertingText' ? 'recording' : 'assertingText');
-      }),
-      addEventListener(this._assertValuesToggle, 'click', () => {
-        if (!this._assertValuesToggle.classList.contains('disabled'))
-          this._recorder.setMode(this._recorder.state.mode === 'assertingValue' ? 'recording' : 'assertingValue');
-      }),
-      addEventListener(this._assertSnapshotToggle, 'click', () => {
-        if (!this._assertSnapshotToggle.classList.contains('disabled'))
-          this._recorder.setMode(this._recorder.state.mode === 'assertingSnapshot' ? 'recording' : 'assertingSnapshot');
+      addEventListener(this._closeToggle, 'click', () => {
+        void this._recorder.closeBrowsers();
       }),
     ];
   }
@@ -1278,55 +1244,21 @@ class Overlay {
     return this._recorder.injectedScript.utils.isInsideScope(this._overlayElement, element);
   }
 
-  setUIState(state: UIState) {
-    const isRecording = state.mode === 'recording' || state.mode === 'assertingText' || state.mode === 'assertingVisibility' || state.mode === 'assertingValue' || state.mode === 'assertingSnapshot' || state.mode === 'recording-inspecting';
-    this._recordToggle.classList.toggle('toggled', isRecording);
-    this._recordToggle.title = isRecording ? 'Stop Recording' : 'Start Recording';
-    this._pickLocatorToggle.classList.toggle('toggled', state.mode === 'inspecting' || state.mode === 'recording-inspecting');
-    this._assertVisibilityToggle.classList.toggle('toggled', state.mode === 'assertingVisibility');
-    this._assertVisibilityToggle.classList.toggle('disabled', state.mode === 'none' || state.mode === 'standby' || state.mode === 'inspecting');
-    this._assertTextToggle.classList.toggle('toggled', state.mode === 'assertingText');
-    this._assertTextToggle.classList.toggle('disabled', state.mode === 'none' || state.mode === 'standby' || state.mode === 'inspecting');
-    this._assertValuesToggle.classList.toggle('toggled', state.mode === 'assertingValue');
-    this._assertValuesToggle.classList.toggle('disabled', state.mode === 'none' || state.mode === 'standby' || state.mode === 'inspecting');
-    this._assertSnapshotToggle.classList.toggle('toggled', state.mode === 'assertingSnapshot');
-    this._assertSnapshotToggle.classList.toggle('disabled', state.mode === 'none' || state.mode === 'standby' || state.mode === 'inspecting');
-    if (this._offsetX !== state.overlay.offsetX) {
-      this._offsetX = state.overlay.offsetX;
+  setUIState(_state: UIState) {
+    this._pickLocatorToggle.classList.toggle('toggled', this._recorder.state.mode === 'inspecting' || this._recorder.state.mode === 'recording-inspecting');
+    if (this._offsetX !== this._recorder.state.overlay.offsetX) {
+      this._offsetX = this._recorder.state.overlay.offsetX;
       this._updateVisualPosition();
     }
-    if (state.mode === 'none')
-      this._hideOverlay();
-    else
-      this._showOverlay();
+    this._showOverlay();
   }
 
-  flashToolSucceeded(tool: 'assertingVisibility' | 'assertingSnapshot' | 'assertingValue') {
-    let element: Element;
-    if (tool === 'assertingVisibility')
-      element = this._assertVisibilityToggle;
-    else if (tool === 'assertingSnapshot')
-      element = this._assertSnapshotToggle;
-    else
-      element = this._assertValuesToggle;
-    element.classList.add('succeeded');
-    this._recorder.injectedScript.utils.builtins.setTimeout(() => element.classList.remove('succeeded'), 2000);
+  setCandidateSelector(_selector: string | undefined) {
   }
 
-  private _hideOverlay() {
-    this._overlayElement.setAttribute('hidden', 'true');
-  }
-
-  private _showOverlay() {
-    if (!this._overlayElement.hasAttribute('hidden'))
-      return;
-    this._overlayElement.removeAttribute('hidden');
-    this._updateVisualPosition();
-  }
-
-  private _updateVisualPosition() {
-    this._measure = this._overlayElement.getBoundingClientRect();
-    this._overlayElement.style.left = ((this._recorder.injectedScript.window.innerWidth - this._measure.width) / 2 + this._offsetX) + 'px';
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingSnapshot' | 'assertingValue') {
+    this._pickLocatorToggle.classList.add('succeeded');
+    this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
 
   onMouseMove(event: MouseEvent) {
@@ -1334,16 +1266,15 @@ class Overlay {
       this._dragState = undefined;
       return false;
     }
-    if (this._dragState) {
-      this._offsetX = this._dragState.offsetX + event.clientX - this._dragState.dragStart.x;
-      const halfGapSize = (this._recorder.injectedScript.window.innerWidth - this._measure.width) / 2 - 10;
-      this._offsetX = Math.max(-halfGapSize, Math.min(halfGapSize, this._offsetX));
-      this._updateVisualPosition();
-      this._recorder.setOverlayState({ offsetX: this._offsetX });
-      consumeEvent(event);
-      return true;
-    }
-    return false;
+    if (!this._dragState)
+      return false;
+    this._offsetX = this._dragState.offsetX + event.clientX - this._dragState.dragStart.x;
+    const halfGapSize = (this._recorder.injectedScript.window.innerWidth - this._measure.width) / 2 - 10;
+    this._offsetX = Math.max(-halfGapSize, Math.min(halfGapSize, this._offsetX));
+    this._updateVisualPosition();
+    this._recorder.setOverlayState({ offsetX: this._offsetX });
+    consumeEvent(event);
+    return true;
   }
 
   onMouseUp(event: MouseEvent) {
@@ -1366,6 +1297,18 @@ class Overlay {
   onDblClick(event: MouseEvent) {
     return false;
   }
+
+  private _showOverlay() {
+    if (!this._overlayElement.hasAttribute('hidden'))
+      return;
+    this._overlayElement.removeAttribute('hidden');
+    this._updateVisualPosition();
+  }
+
+  private _updateVisualPosition() {
+    this._measure = this._overlayElement.getBoundingClientRect();
+    this._overlayElement.style.left = ((this._recorder.injectedScript.window.innerWidth - this._measure.width) / 2 + this._offsetX) + 'px';
+  }
 }
 
 export class Recorder {
@@ -1379,6 +1322,7 @@ export class Recorder {
   readonly highlight: Highlight;
   readonly overlay: Overlay | undefined;
   private _stylesheet: CSSStyleSheet;
+  private _hoveredInspectedModel: HighlightModel | null = null;
   state: UIState = {
     mode: 'none',
     testIdAttributeName: 'data-testid',
@@ -1680,7 +1624,9 @@ export class Recorder {
   private _ignoreOverlayEvent(event: Event) {
     return event.composedPath().some(e => {
       const nodeName = (e as Element).nodeName || '';
-      return nodeName.toLowerCase() === 'x-pw-glass';
+      if (nodeName.toLowerCase() === 'x-pw-glass')
+        return true;
+      return !!this.overlay && (e as Node).nodeType === Node.ELEMENT_NODE && this.overlay.contains(e as Element);
     });
   }
 
@@ -1722,7 +1668,45 @@ export class Recorder {
     void this._delegate.setOverlayState?.(state);
   }
 
+  closeBrowsers() {
+    void this._delegate.closeBrowsers?.();
+  }
+
+  previewInspectedModel(model: HighlightModel | null) {
+    this._hoveredInspectedModel = model;
+  }
+
+  startSelectorPicking() {
+    this._hoveredInspectedModel = null;
+    this.updateHighlight(null, false);
+    const mode: Mode = this.state.mode === 'recording' ? 'recording-inspecting' : 'inspecting';
+    this.setMode(mode);
+  }
+
+  cancelSelectorPicking() {
+    this._hoveredInspectedModel = null;
+    this.updateHighlight(null, false);
+    const mode: Mode = this.state.mode === 'recording-inspecting' ? 'recording' : 'standby';
+    this.setMode(mode);
+  }
+
+  pickHoveredSelector(model: HighlightModel): boolean {
+    if (!model.selector)
+      return false;
+    copyText(this.document, model.selector);
+    this.overlay?.flashToolSucceeded('assertingVisibility');
+    const ariaSnapshot = this.injectedScript.ariaSnapshot(model.elements[0], { mode: 'default' });
+    void this._delegate.elementPicked?.({ selector: model.selector, ariaSnapshot });
+    return true;
+  }
+
   elementPicked(selector: string, model: HighlightModel) {
+    this._hoveredInspectedModel = null;
+    this.updateHighlight(null, false);
+    if (this.state.mode === 'recording-inspecting')
+      this.setMode('recording');
+    else if (this.state.mode === 'inspecting')
+      this.setMode('standby');
     const ariaSnapshot = this.injectedScript.ariaSnapshot(model.elements[0], { mode: 'default' });
     void this._delegate.elementPicked?.({ selector, ariaSnapshot });
   }
@@ -1859,6 +1843,19 @@ function consumeEvent(e: Event) {
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
+}
+
+function copyText(document: Document, text: string) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', 'true');
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  textArea.style.pointerEvents = 'none';
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand('copy');
+  textArea.remove();
 }
 
 type HighlightModel = {
