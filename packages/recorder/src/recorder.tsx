@@ -22,7 +22,7 @@ import { ToolbarButton } from '@web/components/toolbarButton';
 import * as React from 'react';
 import './recorder.css';
 import { asLocator } from '@isomorphic/locatorGenerators';
-import { copy } from '@web/uiUtils';
+import { copySelectorAndSubmitAuthoringResult } from './selectorAuthoring';
 
 import type { RecorderBackend, RecorderFrontend } from './recorderTypes';
 
@@ -93,9 +93,14 @@ export const Recorder: React.FC = ({}) => {
   const isPicking = mode === 'inspecting' || mode === 'recording-inspecting';
   const canChangeFormat = sources.length > 1;
   const onCopy = React.useCallback(() => {
-    copy(locator);
-    setCopyFeedbackVisible(true);
-  }, [locator]);
+    const clipboard = copySelectorAndSubmitAuthoringResult({
+      backend,
+      selector: locator,
+      strategy: selectedFileId,
+      url: pageUrl,
+    });
+    setCopyFeedbackVisible(clipboard.ok);
+  }, [backend, locator, pageUrl, selectedFileId]);
   const onClear = React.useCallback(() => {
     setLocator('');
     setRawSelector(undefined);

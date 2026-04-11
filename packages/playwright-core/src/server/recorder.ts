@@ -29,6 +29,7 @@ import { buildFullSelector, generateFrameSelector, metadataToCallLog } from './r
 import { nullProgress, ProgressController } from './progress';
 
 import { RecorderSignalProcessor } from './recorder/recorderSignalProcessor';
+import { SelectorAuthoringResultBridge } from './recorder/selectorAuthoringBridge';
 import * as rawRecorderSource from './../generated/pollingRecorderSource';
 import { Frame } from './frames';
 import { Page } from './page';
@@ -41,7 +42,17 @@ import type { AriaTemplateNode } from '@isomorphic/ariaSnapshot';
 import type { Progress } from './progress';
 import type * as channels from '@protocol/channels';
 import type * as actions from '@recorder/actions';
-import type { CallLog, CallLogStatus, ElementInfo, Mode, OverlayState, Source, UIState } from '@recorder/recorderTypes';
+import type {
+  CallLog,
+  CallLogStatus,
+  ElementInfo,
+  Mode,
+  OverlayState,
+  SelectorAuthoringClipboardPayload,
+  SelectorAuthoringResult,
+  Source,
+  UIState,
+} from '@recorder/recorderTypes';
 import type { RegisteredListener } from '@utils/eventsHelper';
 
 const recorderSymbol = Symbol('recorderSymbol');
@@ -96,6 +107,8 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
   private _enabled: boolean = false;
   private _callLogs: CallLog[] = [];
   private _pickLocatorPage: Page | undefined;
+  private _selectorAuthoringResultBridge: SelectorAuthoringResultBridge;
+  private _selectorAuthoringResultSubmitted = false;
 
   static forContext(context: BrowserContext, params: RecorderParams): Promise<Recorder> {
     let recorderPromise = (context as any)[recorderSymbol] as Promise<Recorder>;
@@ -147,6 +160,7 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
 
     this._omitCallTracking = !!params.omitCallTracking;
     this._debugger = context.debugger();
+    this._selectorAuthoringResultBridge = SelectorAuthoringResultBridge.fromEnvironment();
     context.instrumentation.addListener(this, context);
 
     if (isUnderTest()) {
@@ -197,7 +211,9 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
 
       await this._context.exposeBinding(progress, '__pw_recorderElementPicked', false, async ({ frame }, elementInfo: ElementInfo) => {
         const selectorChain = await generateFrameSelector(progress, frame);
-        this.emit(RecorderEvent.ElementPicked, { selector: buildFullSelector(selectorChain, elementInfo.selector), ariaSnapshot: elementInfo.ariaSnapshot }, true);
+        const fullSelector = buildFullSelector(selectorChain, elementInfo.selector);
+        this.emit(RecorderEvent.ElementPicked, { selector: fullSelector, ariaSnapshot: elementInfo.ariaSnapshot }, true);
+        await this._submitSelectorAuthoringResultFromElementPick(progress, frame, fullSelector);
       });
 
       await this._context.exposeBinding(progress, '__pw_recorderSetMode', false, async ({ frame }, mode: Mode) => {
@@ -565,6 +581,88 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
 
   private _testIdAttributeName(): string {
     return this._params.testIdAttributeName || this._context.selectors().testIdAttributeName() || 'data-testid';
+  }
+
+  private async _submitSelectorAuthoringResultFromElementPick(progress: Progress, frame: Frame, selector: string): Promise<void> {
+    if (!this._selectorAuthoringResultBridge.isEnabled())
+      return;
+    if (this._selectorAuthoringResultSubmitted)
+      return;
+
+    const clipboard = await this._copySelectorToClipboard(progress, frame, selector);
+    const result: SelectorAuthoringResult = {
+      selector,
+      selectedAt: new Date().toISOString(),
+      clipboard,
+      meta: {
+        strategy: 'playwright-recorder-auto-pick',
+        url: frame._page.mainFrame().url(),
+      },
+    };
+
+    try {
+      await progress.race(this._selectorAuthoringResultBridge.submitResult(result));
+      this._selectorAuthoringResultSubmitted = true;
+      frame._page.browserContext.close(nullProgress, { reason: 'Selector authoring completed' }).catch(() => {});
+    } catch {
+    }
+  }
+
+  private async _copySelectorToClipboard(progress: Progress, frame: Frame, selector: string): Promise<SelectorAuthoringClipboardPayload> {
+    try {
+      return await frame.evaluateExpression(progress, String(async (value: string) => {
+        const copyWithExecCommand = () => {
+          const textArea = document.createElement('textarea');
+          textArea.style.position = 'fixed';
+          textArea.style.top = '0';
+          textArea.style.left = '0';
+          textArea.style.opacity = '0';
+          textArea.value = value;
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+
+          try {
+            const copied = document.execCommand('copy');
+            return copied
+              ? { attempted: true, ok: true }
+              : { attempted: true, ok: false, errorMessage: 'document.execCommand(\'copy\') returned false' };
+          } catch (error) {
+            return {
+              attempted: true,
+              ok: false,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            };
+          } finally {
+            textArea.remove();
+          }
+        };
+
+        if (navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(value);
+            return { attempted: true, ok: true };
+          } catch (error) {
+            const fallback = copyWithExecCommand();
+            if (fallback.ok)
+              return fallback;
+            return {
+              attempted: true,
+              ok: false,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            };
+          }
+        }
+
+        return copyWithExecCommand();
+      }), { isFunction: true }, selector);
+    } catch (error) {
+      return {
+        attempted: true,
+        ok: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   private async _createActionInContext(progress: Progress, frame: Frame, action: actions.Action): Promise<actions.ActionInContext> {

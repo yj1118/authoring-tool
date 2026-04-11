@@ -29,10 +29,11 @@ import { collapseActions, shouldMergeAction } from './recorderUtils';
 import { generateCode } from '../codegen/language';
 import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
+import { SelectorAuthoringResultBridge } from './selectorAuthoringBridge';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
-import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, Source } from '@recorder/recorderTypes';
+import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, SelectorAuthoringResult, Source } from '@recorder/recorderTypes';
 import type { Language, LanguageGeneratorOptions } from '../codegen/types';
 import type * as channels from '@protocol/channels';
 import type { Progress } from '../progress';
@@ -58,6 +59,7 @@ export class RecorderApp {
   private _primaryGeneratorId: string;
   private _selectedGeneratorId: string;
   private _frontend: RecorderFrontend;
+  private _selectorAuthoringResultBridge: SelectorAuthoringResultBridge;
 
   private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
     this._page = page;
@@ -81,6 +83,7 @@ export class RecorderApp {
       if (languageGenerator.id === this._primaryGeneratorId)
         this._recorder.setLanguage(languageGenerator.highlighter);
     }
+    this._selectorAuthoringResultBridge = SelectorAuthoringResultBridge.fromEnvironment();
   }
 
   private async _init(inspectedContext: BrowserContext) {
@@ -167,6 +170,9 @@ export class RecorderApp {
           await this._recorder.setHighlightedSelector(params.selector);
         if (params.ariaTemplate)
           await this._recorder.setHighlightedAriaTemplate(params.ariaTemplate);
+      },
+      submitSelectorAuthoringResult: async (params: SelectorAuthoringResult) => {
+        await this._selectorAuthoringResultBridge.submitResult(params);
       },
     };
 

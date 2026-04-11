@@ -97,6 +97,24 @@ export type Source = {
   actions?: string[];
 };
 
+export type SelectorAuthoringClipboardPayload = {
+  attempted: true;
+  ok: boolean;
+  errorMessage?: string;
+};
+
+export type SelectorAuthoringResultMeta = {
+  strategy?: string;
+  url?: string;
+};
+
+export type SelectorAuthoringResult = {
+  selector: string;
+  selectedAt: string;
+  clipboard: SelectorAuthoringClipboardPayload;
+  meta?: SelectorAuthoringResultMeta;
+};
+
 declare global {
   interface Window {
     playwrightSourcesEchoForTest: Source[];
@@ -114,6 +132,7 @@ export interface RecorderBackend {
   highlightRequested(params: { selector?: string; ariaTemplate?: AriaTemplateNode }): Promise<void>;
   fileChanged(params: { fileId: string }): Promise<void>;
   clear(): Promise<void>;
+  submitSelectorAuthoringResult(params: SelectorAuthoringResult): Promise<void>;
 }
 
 export interface RecorderFrontend {
