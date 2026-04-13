@@ -251,6 +251,7 @@ export async function open(options: Options, url: string | undefined) {
 
 export async function codegen(options: Options & { target: string, output?: string, testIdAttribute?: string }, url: string | undefined) {
   const { target: language, output: outputFile, testIdAttribute: testIdAttributeName } = options;
+  const isSelectorAuthoring = process.env.TEST_BOT_SELECTOR_AUTHORING_ENABLED === '1';
   const tracesDir = path.join(os.tmpdir(), `playwright-recorder-trace-${Date.now()}`);
   const { context, browser, launchOptions, contextOptions, closeBrowser } = await launchContext(options, {
     headless: !!process.env.PWTEST_CLI_HEADLESS,
@@ -261,17 +262,23 @@ export async function codegen(options: Options & { target: string, output?: stri
   const donePromise = new ManualPromise<void>();
   maybeSetupTestHooks(browser, closeBrowser, donePromise);
   dotenv.config({ path: 'playwright.env' });
+  const recorderContextOptions = { ...contextOptions };
+  // Generated code formatting does not expect `viewport: null`, but selector
+  // authoring uses it to follow the host window size. Omit it for the recorder UI.
+  if ((recorderContextOptions as any).viewport === null)
+    delete (recorderContextOptions as any).viewport;
   await context._enableRecorder({
     language,
     launchOptions,
-    contextOptions,
+    contextOptions: recorderContextOptions,
     device: options.device,
     saveStorage: options.saveStorage,
     mode: 'none',
     testIdAttributeName,
     outputFile: outputFile ? path.resolve(outputFile) : undefined,
     handleSIGINT: false,
-    hideInspector: true,
+    hideInspector: !isSelectorAuthoring,
+    hideToolbar: isSelectorAuthoring,
   });
   await openPage(context, url);
   donePromise.resolve();

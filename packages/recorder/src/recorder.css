@@ -27,38 +27,6 @@
   min-height: 0;
 }
 
-.selector-authoring-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  border-bottom: 1px solid var(--vscode-panel-border);
-}
-
-.selector-authoring-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--vscode-foreground);
-}
-
-.selector-authoring-copy {
-  min-width: 0;
-}
-
-.selector-authoring-subtitle {
-  margin-top: 4px;
-  color: var(--vscode-descriptionForeground);
-}
-
-.selector-authoring-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-
 .selector-authoring-format {
   display: flex;
   align-items: center;
@@ -76,16 +44,187 @@
 }
 
 .selector-authoring-page {
-  max-width: 50%;
+  max-width: 320px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--vscode-descriptionForeground);
 }
 
-.selector-authoring-editor {
+.selector-authoring-collection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.selector-authoring-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.selector-authoring-collection-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.selector-authoring-count {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.selector-authoring-text-button {
+  border: none;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  padding: 0;
+}
+
+.selector-authoring-text-button:disabled {
+  color: var(--vscode-disabledForeground);
+  cursor: default;
+}
+
+.selector-authoring-collection {
+  margin: 12px 16px 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  min-height: 156px;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--vscode-editor-background);
+}
+
+.selector-authoring-entry {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.selector-authoring-entry:last-child {
+  border-bottom: none;
+}
+
+.selector-authoring-entry.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
+.selector-authoring-entry-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   flex: auto;
-  min-height: 0;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.selector-authoring-entry-order {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.selector-authoring-entry-content {
+  min-width: 0;
+  flex: auto;
+}
+
+.selector-authoring-entry-selector {
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selector-authoring-entry-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.selector-authoring-entry-url {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selector-authoring-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-left: 1px solid var(--vscode-panel-border);
+}
+
+.selector-authoring-secondary-button {
+  border: 1px solid var(--vscode-button-border);
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.selector-authoring-secondary-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.selector-authoring-secondary-button.danger {
+  color: var(--vscode-errorForeground);
+}
+
+.selector-authoring-empty {
+  padding: 20px 16px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.selector-authoring-message {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.selector-authoring-message.success {
+  background: color-mix(in srgb, var(--vscode-testing-iconPassed) 12%, transparent);
+  color: var(--vscode-foreground);
+}
+
+.selector-authoring-message.warning {
+  background: color-mix(in srgb, var(--vscode-editorWarning-foreground, #c27d00) 12%, transparent);
+  color: var(--vscode-editorWarning-foreground, #c27d00);
+}
+
+.selector-authoring-message.error {
+  background: color-mix(in srgb, var(--vscode-errorForeground) 10%, transparent);
+  color: var(--vscode-errorForeground);
 }
 
 .selector-authoring-status {

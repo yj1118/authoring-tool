@@ -14,21 +14,9 @@
   limitations under the License.
 */
 
-import type { RecorderBackend, SelectorAuthoringClipboardPayload, SelectorAuthoringResult } from './recorderTypes';
+import type { SelectorAuthoringClipboardPayload, SelectorAuthoringResult } from './recorderTypes';
 
-export function copySelectorAndSubmitAuthoringResult(input: {
-  backend: Pick<RecorderBackend, 'submitSelectorAuthoringResult'>;
-  selector: string;
-  strategy?: string;
-  url?: string;
-}): SelectorAuthoringClipboardPayload {
-  const clipboard = copySelectorToClipboard(input.selector);
-  const result = buildSelectorAuthoringResult(input.selector, clipboard, input.strategy, input.url);
-  void input.backend.submitSelectorAuthoringResult(result).catch(() => {});
-  return clipboard;
-}
-
-function buildSelectorAuthoringResult(
+export function buildSelectorAuthoringResult(
   selector: string,
   clipboard: SelectorAuthoringClipboardPayload,
   strategy?: string,
@@ -48,7 +36,7 @@ function buildSelectorAuthoringResult(
   };
 }
 
-function copySelectorToClipboard(selector: string): SelectorAuthoringClipboardPayload {
+export function copySelectorToClipboard(selector: string): SelectorAuthoringClipboardPayload {
   const textArea = document.createElement('textarea');
   textArea.style.position = 'absolute';
   textArea.style.zIndex = '-1000';

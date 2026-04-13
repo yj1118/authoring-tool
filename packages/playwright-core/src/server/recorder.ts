@@ -213,7 +213,8 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
         const selectorChain = await generateFrameSelector(progress, frame);
         const fullSelector = buildFullSelector(selectorChain, elementInfo.selector);
         this.emit(RecorderEvent.ElementPicked, { selector: fullSelector, ariaSnapshot: elementInfo.ariaSnapshot }, true);
-        await this._submitSelectorAuthoringResultFromElementPick(progress, frame, fullSelector);
+        if (this._params.hideInspector)
+          await this._submitSelectorAuthoringResultFromElementPick(progress, frame, fullSelector);
       });
 
       await this._context.exposeBinding(progress, '__pw_recorderSetMode', false, async ({ frame }, mode: Mode) => {

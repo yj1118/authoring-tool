@@ -30,6 +30,8 @@ import { generateCode } from '../codegen/language';
 import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
 import { SelectorAuthoringResultBridge } from './selectorAuthoringBridge';
+import { CRPage } from '../chromium/crPage';
+import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
@@ -60,6 +62,7 @@ export class RecorderApp {
   private _selectedGeneratorId: string;
   private _frontend: RecorderFrontend;
   private _selectorAuthoringResultBridge: SelectorAuthoringResultBridge;
+  private _windowsTopmostCompanion: WindowsTopmostCompanion | null = null;
 
   private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
     this._page = page;
@@ -111,9 +114,10 @@ export class RecorderApp {
         });
       });
 
-      await this._createDispatcher(progress);
+      await this._createDispatcher(progress, inspectedContext);
 
       this._page.once('close', () => {
+        void this._releaseWindowsTopmostCompanion();
         this._recorder.close();
         this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
         delete (inspectedContext as any)[recorderAppSymbol];
@@ -127,6 +131,7 @@ export class RecorderApp {
       this._frontend.pageNavigated({ url });
     this._frontend.modeChanged({ mode: this._recorder.mode() });
     this._frontend.pauseStateChanged({ paused: this._recorder.paused() });
+    this._frontend.selectorAuthoringStateChanged({ canSubmitResult: this._selectorAuthoringResultBridge.isEnabled() });
     this._updateActions('reveal');
     // Update paused sources *after* generated ones, to reveal the currently paused source if any.
     this._onUserSourcesChanged(this._recorder.userSources(), this._recorder.pausedSourceId());
@@ -134,7 +139,7 @@ export class RecorderApp {
     this._wireListeners(this._recorder);
   }
 
-  private async _createDispatcher(progress: Progress) {
+  private async _createDispatcher(progress: Progress, inspectedContext: BrowserContext) {
     const dispatcher: RecorderBackend = {
       clear: async () => {
         this._actions = [];
@@ -174,6 +179,9 @@ export class RecorderApp {
       submitSelectorAuthoringResult: async (params: SelectorAuthoringResult) => {
         await this._selectorAuthoringResultBridge.submitResult(params);
       },
+      closeSelectorAuthoringSession: async () => {
+        await inspectedContext.close(nullProgress, { reason: 'Selector authoring finished from tool window' });
+      },
     };
 
     await this._page.exposeBinding(progress, 'sendCommand', false, async (_, data: any) => {
@@ -195,6 +203,7 @@ export class RecorderApp {
   }
 
   async close() {
+    await this._releaseWindowsTopmostCompanion();
     await this._page.close(nullProgress);
   }
 
@@ -244,6 +253,20 @@ export class RecorderApp {
 
     const recorderApp = new RecorderApp(recorder, appParams, page, appContext._browser.options.wsEndpoint);
     await recorderApp._init(inspectedContext);
+    if (params.hideToolbar) {
+      await dockSelectorAuthoringWindows(inspectedContext, page);
+      const attachResult = await WindowsTopmostCompanion.attachIfNeeded(inspectedContext, page);
+      recorderApp._windowsTopmostCompanion = attachResult.companion;
+      if (attachResult.error) {
+        console.warn(`[selector-authoring] ${attachResult.error.message}`); // eslint-disable-line no-console
+        recorderApp._frontend.selectorAuthoringDiagnosticChanged({
+          diagnostic: {
+            severity: 'warning',
+            message: `Windows topmost companion was unavailable, so selector authoring is using the standard docked layout without always-on-top behavior. ${attachResult.error.message}`,
+          },
+        });
+      }
+    }
     (inspectedContext as any).recorderAppForTest = recorderApp;
   }
 
@@ -261,6 +284,7 @@ export class RecorderApp {
     });
 
     recorder.on(RecorderEvent.ContextClosed, () => {
+      void this._releaseWindowsTopmostCompanion();
       this._throttledOutputFile?.flush();
       this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
     });
@@ -350,6 +374,12 @@ export class RecorderApp {
     this._pushAllSources();
     this._revealSource(revealSourceId);
   }
+
+  private async _releaseWindowsTopmostCompanion() {
+    const companion = this._windowsTopmostCompanion;
+    this._windowsTopmostCompanion = null;
+    await companion?.restoreAndRelease();
+  }
 }
 
 // For example, if the SDK language is 'javascript', this returns 'playwright-test'.
@@ -414,3 +444,72 @@ function createRecorderFrontend(page: Page): RecorderFrontend {
 }
 
 const recorderAppSymbol = Symbol('recorderApp');
+
+type DockableWindowBounds = {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+};
+
+async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, toolPage: Page): Promise<void> {
+  if (inspectedContext._browser.options.browserType !== 'chromium')
+    return;
+
+  const inspectedPage = inspectedContext.pages()[0];
+  if (!inspectedPage)
+    return;
+
+  const inspectedBounds = await getWindowBounds(inspectedPage).catch(() => null);
+  if (!inspectedBounds)
+    return;
+
+  const hostLeft = inspectedBounds.left ?? 0;
+  const hostTop = inspectedBounds.top ?? 0;
+  const hostWidth = clamp(inspectedBounds.width ?? 1280, 900, 2400);
+  const hostHeight = clamp(inspectedBounds.height ?? 900, 600, 1600);
+
+  const toolWidth = clamp(Math.round(hostWidth * 0.32), 360, 560);
+  const inspectedWidth = Math.max(640, hostWidth - toolWidth);
+
+  await Promise.all([
+    setWindowBounds(inspectedPage, {
+      left: hostLeft,
+      top: hostTop,
+      width: inspectedWidth,
+      height: hostHeight,
+    }),
+    setWindowBounds(toolPage, {
+      left: hostLeft + inspectedWidth,
+      top: hostTop,
+      width: toolWidth,
+      height: hostHeight,
+    }),
+  ]).catch(() => {});
+
+  await toolPage.bringToFront(nullProgress).catch(() => {});
+  await inspectedPage.bringToFront(nullProgress).catch(() => {});
+}
+
+async function getWindowBounds(page: Page): Promise<DockableWindowBounds> {
+  const client = chromiumWindowClient(page);
+  const { bounds } = await client.send('Browser.getWindowForTarget');
+  return bounds;
+}
+
+async function setWindowBounds(page: Page, bounds: DockableWindowBounds): Promise<void> {
+  const client = chromiumWindowClient(page);
+  const { windowId } = await client.send('Browser.getWindowForTarget');
+  await client.send('Browser.setWindowBounds', {
+    windowId,
+    bounds,
+  });
+}
+
+function chromiumWindowClient(page: Page) {
+  return (page.delegate as CRPage)._mainFrameSession._client;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}

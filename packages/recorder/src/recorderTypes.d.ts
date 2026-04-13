@@ -115,6 +115,15 @@ export type SelectorAuthoringResult = {
   meta?: SelectorAuthoringResultMeta;
 };
 
+export type SelectorAuthoringState = {
+  canSubmitResult: boolean;
+};
+
+export type SelectorAuthoringDiagnostic = {
+  message: string;
+  severity: 'warning' | 'error';
+};
+
 declare global {
   interface Window {
     playwrightSourcesEchoForTest: Source[];
@@ -133,6 +142,7 @@ export interface RecorderBackend {
   fileChanged(params: { fileId: string }): Promise<void>;
   clear(): Promise<void>;
   submitSelectorAuthoringResult(params: SelectorAuthoringResult): Promise<void>;
+  closeSelectorAuthoringSession(): Promise<void>;
 }
 
 export interface RecorderFrontend {
@@ -143,4 +153,6 @@ export interface RecorderFrontend {
   pageNavigated: (params: { url: string | undefined }) => void;
   callLogsUpdated: (params: { callLogs: CallLog[] }) => void;
   elementPicked: (params: { elementInfo: ElementInfo, userGesture?: boolean }) => void;
+  selectorAuthoringStateChanged: (params: SelectorAuthoringState) => void;
+  selectorAuthoringDiagnosticChanged: (params: { diagnostic: SelectorAuthoringDiagnostic | null }) => void;
 }
