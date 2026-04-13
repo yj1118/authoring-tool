@@ -14,27 +14,7 @@
   limitations under the License.
 */
 
-import type { SelectorAuthoringClipboardPayload, SelectorAuthoringResult } from './recorderTypes';
-
-export function buildSelectorAuthoringResult(
-  selector: string,
-  clipboard: SelectorAuthoringClipboardPayload,
-  strategy?: string,
-  url?: string
-): SelectorAuthoringResult {
-  const meta: SelectorAuthoringResult['meta'] = {};
-  if (strategy)
-    meta.strategy = strategy;
-  if (url)
-    meta.url = url;
-
-  return {
-    selector,
-    selectedAt: new Date().toISOString(),
-    clipboard,
-    meta: Object.keys(meta).length ? meta : undefined,
-  };
-}
+import type { SelectorAuthoringClipboardPayload } from './recorderTypes';
 
 export function copySelectorToClipboard(selector: string): SelectorAuthoringClipboardPayload {
   const textArea = document.createElement('textarea');

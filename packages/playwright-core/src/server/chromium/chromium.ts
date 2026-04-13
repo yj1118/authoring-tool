@@ -70,10 +70,24 @@ export class Chromium extends BrowserType {
     return super.launch(progress, options, protocolLogger);
   }
 
-  override async launchPersistentContext(progress: Progress, userDataDir: string, options: channels.BrowserTypeLaunchPersistentContextOptions & { cdpPort?: number, internalIgnoreHTTPSErrors?: boolean, socksProxyPort?: number }): Promise<BrowserContext> {
+  override async launchPersistentContext(progress: Progress, userDataDir: string, options: channels.BrowserTypeLaunchPersistentContextOptions & { cdpPort?: number, internalIgnoreHTTPSErrors?: boolean, socksProxyPort?: number, chromiumProfilePreferences?: Record<string, any> }): Promise<BrowserContext> {
     if (options.channel?.startsWith('bidi-'))
       return this._bidiChromium.launchPersistentContext(progress, userDataDir, options);
     return super.launchPersistentContext(progress, userDataDir, options);
+  }
+
+  override async prepareUserDataDir(options: types.LaunchOptions, userDataDir: string): Promise<void> {
+    const preferences = options.chromiumProfilePreferences;
+    if (!preferences || !Object.keys(preferences).length)
+      return;
+
+    const defaultProfileDir = path.join(userDataDir, 'Default');
+    const preferencesPath = path.join(defaultProfileDir, 'Preferences');
+    await fs.promises.mkdir(defaultProfileDir, { recursive: true });
+
+    const existingPreferences = await fs.promises.readFile(preferencesPath, 'utf8').then(JSON.parse).catch(() => ({}));
+    const mergedPreferences = deepMergePreferences(existingPreferences, preferences);
+    await fs.promises.writeFile(preferencesPath, JSON.stringify(mergedPreferences), 'utf8');
   }
 
   override async connectOverCDP(progress: Progress, endpointURL: string, options: { slowMo?: number, headers?: types.HeadersArray, isLocal?: boolean }) {
@@ -442,4 +456,20 @@ function parseSeleniumRemoteParams(env: {name: string, value: string}, progress:
   } catch (e) {
     progress.log(`<selenium> ignoring additional ${env.name} "${env.value}": ${e}`);
   }
+}
+
+function deepMergePreferences(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = { ...target };
+  for (const [key, value] of Object.entries(source)) {
+    if (isPlainObject(value) && isPlainObject(result[key])) {
+      result[key] = deepMergePreferences(result[key], value);
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
+}
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }

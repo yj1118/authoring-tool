@@ -35,7 +35,7 @@ export async function launchApp(browserType: BrowserType, options: {
   sdkLanguage: string,
   windowSize: types.Size,
   windowPosition?: types.Point,
-  persistentContextOptions?: Parameters<BrowserType['launchPersistentContext']>[2];
+  persistentContextOptions?: Parameters<BrowserType['launchPersistentContext']>[2] & { chromiumProfilePreferences?: Record<string, any> };
 }) {
   const args = [...options.persistentContextOptions?.args ?? []];
 

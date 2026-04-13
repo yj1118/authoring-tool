@@ -29,13 +29,12 @@ import { collapseActions, shouldMergeAction } from './recorderUtils';
 import { generateCode } from '../codegen/language';
 import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
-import { SelectorAuthoringResultBridge } from './selectorAuthoringBridge';
 import { CRPage } from '../chromium/crPage';
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
-import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, SelectorAuthoringResult, Source } from '@recorder/recorderTypes';
+import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, Source } from '@recorder/recorderTypes';
 import type { Language, LanguageGeneratorOptions } from '../codegen/types';
 import type * as channels from '@protocol/channels';
 import type { Progress } from '../progress';
@@ -61,7 +60,6 @@ export class RecorderApp {
   private _primaryGeneratorId: string;
   private _selectedGeneratorId: string;
   private _frontend: RecorderFrontend;
-  private _selectorAuthoringResultBridge: SelectorAuthoringResultBridge;
   private _windowsTopmostCompanion: WindowsTopmostCompanion | null = null;
 
   private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
@@ -86,7 +84,6 @@ export class RecorderApp {
       if (languageGenerator.id === this._primaryGeneratorId)
         this._recorder.setLanguage(languageGenerator.highlighter);
     }
-    this._selectorAuthoringResultBridge = SelectorAuthoringResultBridge.fromEnvironment();
   }
 
   private async _init(inspectedContext: BrowserContext) {
@@ -119,6 +116,7 @@ export class RecorderApp {
       this._page.once('close', () => {
         void this._releaseWindowsTopmostCompanion();
         this._recorder.close();
+        inspectedContext.close(nullProgress, { reason: 'Selector authoring window closed' }).catch(() => {});
         this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
         delete (inspectedContext as any)[recorderAppSymbol];
       });
@@ -131,7 +129,6 @@ export class RecorderApp {
       this._frontend.pageNavigated({ url });
     this._frontend.modeChanged({ mode: this._recorder.mode() });
     this._frontend.pauseStateChanged({ paused: this._recorder.paused() });
-    this._frontend.selectorAuthoringStateChanged({ canSubmitResult: this._selectorAuthoringResultBridge.isEnabled() });
     this._updateActions('reveal');
     // Update paused sources *after* generated ones, to reveal the currently paused source if any.
     this._onUserSourcesChanged(this._recorder.userSources(), this._recorder.pausedSourceId());
@@ -175,9 +172,6 @@ export class RecorderApp {
           await this._recorder.setHighlightedSelector(params.selector);
         if (params.ariaTemplate)
           await this._recorder.setHighlightedAriaTemplate(params.ariaTemplate);
-      },
-      submitSelectorAuthoringResult: async (params: SelectorAuthoringResult) => {
-        await this._selectorAuthoringResultBridge.submitResult(params);
       },
       closeSelectorAuthoringSession: async () => {
         await inspectedContext.close(nullProgress, { reason: 'Selector authoring finished from tool window' });
@@ -224,13 +218,22 @@ export class RecorderApp {
     const recorderPlaywright = createPlaywright({ sdkLanguage: 'javascript', isInternalPlaywright: true });
     const { context: appContext, page } = await launchApp(recorderPlaywright.chromium, {
       sdkLanguage,
-      windowSize: { width: 600, height: 600 },
+      windowSize: { width: 580, height: 760 },
       windowPosition: { x: 1020, y: 10 },
       persistentContextOptions: {
         noDefaultViewport: true,
         headless: !!process.env.PWTEST_CLI_HEADLESS || (isUnderTest() && !headed),
         cdpPort: isUnderTest() ? 0 : undefined,
         handleSIGINT: params.handleSIGINT,
+        args: [
+          '--disable-translate',
+          '--disable-features=Translate,TranslateUI',
+        ],
+        chromiumProfilePreferences: {
+          translate: {
+            enabled: false,
+          },
+        },
         executablePath: isChromium ? inspectedContext._browser.options.customExecutablePath : undefined,
         // Use the same channel as the inspected context to guarantee that the browser is installed.
         channel: isChromium ? inspectedContext._browser.options.channel : undefined,
@@ -469,8 +472,8 @@ async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, to
   const hostWidth = clamp(inspectedBounds.width ?? 1280, 900, 2400);
   const hostHeight = clamp(inspectedBounds.height ?? 900, 600, 1600);
 
-  const toolWidth = clamp(Math.round(hostWidth * 0.32), 360, 560);
-  const inspectedWidth = Math.max(640, hostWidth - toolWidth);
+  const toolWidth = clamp(Math.round(hostWidth * 0.36), 580, 680);
+  const inspectedWidth = Math.max(720, hostWidth - toolWidth);
 
   await Promise.all([
     setWindowBounds(inspectedPage, {

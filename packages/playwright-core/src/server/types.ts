@@ -164,6 +164,7 @@ export type LaunchOptions = Omit<channels.BrowserTypeLaunchParams, 'timeout'> & 
   proxyOverride?: ProxySettings,
   assistantMode?: boolean,
   socksProxyPort?: number,
+  chromiumProfilePreferences?: Record<string, any>,
 };
 
 export type BrowserContextOptions = channels.BrowserNewContextOptions & {

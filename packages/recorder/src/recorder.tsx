@@ -15,47 +15,29 @@
 */
 
 import type { CallLog, Mode, Source } from './recorderTypes';
-import { Toolbar } from '@web/components/toolbar';
-import { emptySource } from '@web/components/sourceChooser';
-import { ToolbarButton } from '@web/components/toolbarButton';
 import * as React from 'react';
 import './recorder.css';
-import { asLocator } from '@isomorphic/locatorGenerators';
-import { buildSelectorAuthoringResult, copySelectorToClipboard } from './selectorAuthoring';
+import { copySelectorToClipboard } from './selectorAuthoring';
 
-import type { RecorderBackend, RecorderFrontend, SelectorAuthoringDiagnostic, SelectorAuthoringState } from './recorderTypes';
+import type { RecorderBackend, RecorderFrontend, SelectorAuthoringDiagnostic } from './recorderTypes';
 
 type SelectorEntry = {
   id: string;
   pageUrl?: string;
-  rawSelector?: string;
   selector: string;
   selectedAt: string;
 };
 
-type SubmitState = 'idle' | 'submitting' | 'submitted' | 'error';
-
 export const Recorder: React.FC = ({}) => {
-  const [sources, setSources] = React.useState<Source[]>([]);
+  const [, setSources] = React.useState<Source[]>([]);
   const [mode, setMode] = React.useState<Mode>('none');
-  const [selectedFileId, setSelectedFileId] = React.useState<string | undefined>();
   const backend = React.useMemo(createRecorderBackend, []);
   const [entries, setEntries] = React.useState<SelectorEntry[]>([]);
   const [selectedEntryId, setSelectedEntryId] = React.useState<string | undefined>();
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [copiedEntryId, setCopiedEntryId] = React.useState<string | undefined>();
-  const [selectorAuthoringState, setSelectorAuthoringState] = React.useState<SelectorAuthoringState>({ canSubmitResult: false });
   const [selectorAuthoringDiagnostic, setSelectorAuthoringDiagnostic] = React.useState<SelectorAuthoringDiagnostic | null>(null);
-  const [submitState, setSubmitState] = React.useState<SubmitState>('idle');
-  const [submitMessage, setSubmitMessage] = React.useState('');
   const nextEntryId = React.useRef(0);
-
-  const source = React.useMemo(() => {
-    const selectedSource = sources.find(s => s.id === selectedFileId);
-    return selectedSource ?? emptySource();
-  }, [sources, selectedFileId]);
-
-  const selectedEntry = React.useMemo(() => entries.find(entry => entry.id === selectedEntryId), [entries, selectedEntryId]);
 
   React.useEffect(() => {
     if (!copiedEntryId)
@@ -67,11 +49,9 @@ export const Recorder: React.FC = ({}) => {
   React.useLayoutEffect(() => {
     const dispatcher: RecorderFrontend = {
       modeChanged: ({ mode }) => setMode(mode),
-      selectorAuthoringStateChanged: state => setSelectorAuthoringState(state),
       selectorAuthoringDiagnosticChanged: ({ diagnostic }) => setSelectorAuthoringDiagnostic(diagnostic),
       sourcesUpdated: ({ sources }) => {
         setSources(sources);
-        setSelectedFileId(current => current ?? sources[0]?.id);
         window.playwrightSourcesEchoForTest = sources;
       },
       pageNavigated: ({ url }) => {
@@ -82,22 +62,17 @@ export const Recorder: React.FC = ({}) => {
       },
       pauseStateChanged: () => {},
       callLogsUpdated: (_params: { callLogs: CallLog[] }) => {},
-      sourceRevealRequested: ({ sourceId }) => setSelectedFileId(sourceId),
+      sourceRevealRequested: () => {},
       elementPicked: ({ elementInfo }) => {
-        const language = source.language;
-        const selector = asLocator(language, elementInfo.selector);
         const entry: SelectorEntry = {
           id: `selector-${++nextEntryId.current}`,
           pageUrl,
-          rawSelector: elementInfo.selector,
-          selector,
+          selector: elementInfo.selector,
           selectedAt: new Date().toISOString(),
         };
         setEntries(current => [...current, entry]);
         setSelectedEntryId(entry.id);
         setCopiedEntryId(undefined);
-        setSubmitState('idle');
-        setSubmitMessage('');
         if (mode === 'inspecting' || mode === 'recording-inspecting')
           backend.setMode({ mode: 'standby' }).catch(() => { });
       },
@@ -105,15 +80,14 @@ export const Recorder: React.FC = ({}) => {
     window.dispatch = (data: { method: string; params?: any }) => {
       (dispatcher as any)[data.method].call(dispatcher, data.params);
     };
-  }, [backend, mode, pageUrl, source.language]);
+  }, [backend, mode, pageUrl]);
 
   const isPicking = mode === 'inspecting' || mode === 'recording-inspecting';
+  const statusLabel = isPicking ? 'Picking live' : 'Ready';
   const selectEntry = React.useCallback((entryId: string) => {
     const entry = entries.find(candidate => candidate.id === entryId);
     setSelectedEntryId(entryId);
     setCopiedEntryId(undefined);
-    setSubmitMessage('');
-    setSubmitState(current => current === 'submitted' ? current : 'idle');
     void backend.highlightRequested(entry?.selector ? { selector: entry.selector } : {});
   }, [backend, entries]);
 
@@ -131,8 +105,6 @@ export const Recorder: React.FC = ({}) => {
     setEntries(nextEntries);
     setSelectedEntryId(nextSelectedEntryId);
     setCopiedEntryId(current => current === entryId ? undefined : current);
-    setSubmitMessage('');
-    setSubmitState(current => current === 'submitted' ? current : 'idle');
     const nextEntry = nextSelectedEntryId ? nextEntries.find(entry => entry.id === nextSelectedEntryId) : undefined;
     void backend.highlightRequested(nextEntry?.selector ? { selector: nextEntry.selector } : {});
   }, [backend, entries, selectedEntryId]);
@@ -141,63 +113,14 @@ export const Recorder: React.FC = ({}) => {
     setEntries([]);
     setSelectedEntryId(undefined);
     setCopiedEntryId(undefined);
-    setSubmitMessage('');
-    setSubmitState('idle');
     void backend.highlightRequested({});
   }, [backend]);
-
-  const submitEntry = React.useCallback(async (entry: SelectorEntry | undefined) => {
-    if (!entry || !selectorAuthoringState.canSubmitResult || submitState === 'submitting' || submitState === 'submitted')
-      return;
-
-    const clipboard = copySelectorToClipboard(entry.selector);
-    if (clipboard.ok)
-      setCopiedEntryId(entry.id);
-
-    setSubmitState('submitting');
-    setSubmitMessage('');
-
-    try {
-      const result = buildSelectorAuthoringResult(
-          entry.selector,
-          clipboard,
-          selectedFileId,
-          entry.pageUrl ?? pageUrl
-      );
-      await backend.submitSelectorAuthoringResult(result);
-      setSubmitState('submitted');
-      setSubmitMessage('Selected locator was sent back to the DSL field. You can keep collecting more selectors.');
-    } catch (error) {
-      setSubmitState('error');
-      setSubmitMessage(error instanceof Error ? error.message : String(error));
-    }
-  }, [backend, pageUrl, selectedFileId, selectorAuthoringState.canSubmitResult, submitState]);
 
   const closeSession = React.useCallback(() => {
     backend.closeSelectorAuthoringSession().catch(() => { });
   }, [backend]);
 
   return <div className='recorder'>
-    <Toolbar>
-      <ToolbarButton icon='inspect' title={isPicking ? 'Stop picking' : 'Pick selector'} toggled={isPicking} onClick={() => {
-        backend.setMode({ mode: isPicking ? 'standby' : 'inspecting' }).catch(() => { });
-      }}>{isPicking ? 'Stop picking' : 'Pick selector'}</ToolbarButton>
-      <ToolbarButton icon='files' title='Copy selected locator' disabled={!selectedEntry} onClick={() => copyEntry(selectedEntry)}>
-        {selectedEntry && copiedEntryId === selectedEntry.id ? 'Copied' : 'Copy selected'}
-      </ToolbarButton>
-      {selectorAuthoringState.canSubmitResult ? (
-        <ToolbarButton icon='check' title='Use selected locator in DSL' disabled={!selectedEntry || submitState === 'submitting' || submitState === 'submitted'} onClick={() => {
-          void submitEntry(selectedEntry);
-        }}>
-          {submitState === 'submitting' ? 'Applying...' : submitState === 'submitted' ? 'Applied' : 'Use in DSL'}
-        </ToolbarButton>
-      ) : null}
-      <ToolbarButton icon='close' title='Close selector authoring session' onClick={closeSession}>Done</ToolbarButton>
-      <div style={{ flex: 'auto' }}></div>
-      <div className='selector-authoring-status'>
-        {isPicking ? 'Picking...' : submitState === 'submitted' ? 'Applied' : 'Ready'}
-      </div>
-    </Toolbar>
     <div className='selector-authoring-main'>
       {selectorAuthoringDiagnostic ? (
         <div className={`selector-authoring-message ${selectorAuthoringDiagnostic.severity}`}>
@@ -205,55 +128,65 @@ export const Recorder: React.FC = ({}) => {
         </div>
       ) : null}
 
-      <div className='selector-authoring-collection-header'>
-        <div className='selector-authoring-section-title'>Saved candidates</div>
-        <div className='selector-authoring-collection-actions'>
-          <span className='selector-authoring-count'>{entries.length} saved</span>
-          <button className='selector-authoring-text-button' disabled={!entries.length} onClick={clearEntries} type='button'>Clear all</button>
-        </div>
-      </div>
-
-      <div className='selector-authoring-collection'>
-        {entries.length ? entries.map((entry, index) => {
-          const isSelected = entry.id === selectedEntryId;
-          const copyLabel = copiedEntryId === entry.id ? 'Copied' : 'Copy';
-          return (
-            <div className={`selector-authoring-entry ${isSelected ? 'selected' : ''}`} key={entry.id}>
-              <button className='selector-authoring-entry-main' onClick={() => selectEntry(entry.id)} type='button'>
-                <div className='selector-authoring-entry-order'>{index + 1}</div>
-                <div className='selector-authoring-entry-content'>
-                  <div className='selector-authoring-entry-selector' title={entry.selector}>{entry.selector}</div>
-                  <div className='selector-authoring-entry-meta'>
-                    {entry.pageUrl ? <span className='selector-authoring-entry-url' title={entry.pageUrl}>{entry.pageUrl}</span> : null}
-                    <span>{formatTimestamp(entry.selectedAt)}</span>
-                  </div>
-                </div>
+      <div className='selector-authoring-panel'>
+        <div className='selector-authoring-collection-header'>
+          <div className='selector-authoring-header-main'>
+            <div className='selector-authoring-header-actions'>
+              <button
+                className={`selector-authoring-primary-button ${isPicking ? 'toggled' : ''}`}
+                onClick={() => {
+                  backend.setMode({ mode: isPicking ? 'standby' : 'inspecting' }).catch(() => { });
+                }}
+                type='button'
+              >
+                {isPicking ? 'Stop picking' : 'Pick selector'}
               </button>
-              <div className='selector-authoring-entry-actions'>
-                <button className='selector-authoring-secondary-button' onClick={() => copyEntry(entry)} type='button'>{copyLabel}</button>
-                {selectorAuthoringState.canSubmitResult ? (
-                  <button className='selector-authoring-secondary-button' disabled={submitState === 'submitting' || submitState === 'submitted'} onClick={() => {
-                    void submitEntry(entry);
-                  }} type='button'>
-                    {submitState === 'submitted' && isSelected ? 'Applied' : 'Use in DSL'}
-                  </button>
-                ) : null}
-                <button className='selector-authoring-secondary-button danger' onClick={() => removeEntry(entry.id)} type='button'>Remove</button>
+              <button className='selector-authoring-secondary-button' onClick={closeSession} type='button'>Done</button>
+            </div>
+          </div>
+          <div className='selector-authoring-header-side'>
+            <div className={`selector-authoring-status ${isPicking ? 'is-picking' : 'is-ready'}`}>
+              {statusLabel}
+            </div>
+            <span className='selector-authoring-count'>{entries.length} saved</span>
+            <button className='selector-authoring-text-button' disabled={!entries.length} onClick={clearEntries} type='button'>Clear all</button>
+          </div>
+        </div>
+
+        <div className='selector-authoring-collection'>
+          {entries.length ? entries.map((entry, index) => {
+            const isSelected = entry.id === selectedEntryId;
+            const copyLabel = copiedEntryId === entry.id ? 'Copied' : 'Copy';
+            return (
+              <div className={`selector-authoring-entry ${isSelected ? 'selected' : ''}`} key={entry.id}>
+                <button className='selector-authoring-entry-main' onClick={() => selectEntry(entry.id)} type='button'>
+                  <div className='selector-authoring-entry-top'>
+                    <div className='selector-authoring-entry-order'>{index + 1}</div>
+                    <div className='selector-authoring-entry-time'>{formatTimestamp(entry.selectedAt)}</div>
+                  </div>
+                  <div className='selector-authoring-entry-selector'>
+                    <div className='selector-authoring-entry-code' title={entry.selector}>{entry.selector}</div>
+                  </div>
+                  <div className='selector-authoring-entry-meta'>
+                    <div className='selector-authoring-meta-chip page' title={entry.pageUrl || ''}>{entry.pageUrl || '--'}</div>
+                  </div>
+                </button>
+                <div className='selector-authoring-entry-actions'>
+                  <button className='selector-authoring-secondary-button' onClick={() => copyEntry(entry)} type='button'>{copyLabel}</button>
+                  <button className='selector-authoring-secondary-button danger' onClick={() => removeEntry(entry.id)} type='button'>Remove</button>
+                </div>
+              </div>
+            );
+          }) : (
+            <div className='selector-authoring-empty'>
+              <div className='selector-authoring-empty-title'>No selectors saved yet</div>
+              <div className='selector-authoring-empty-copy'>
+                Start with <strong>Pick selector</strong>, then click elements in the page to build a reusable selector list.
               </div>
             </div>
-          );
-        }) : (
-          <div className='selector-authoring-empty'>
-            Click <strong>Pick selector</strong>, then choose elements in the page to build a reusable locator list.
-          </div>
-        )}
-      </div>
-
-      {submitMessage ? (
-        <div className={`selector-authoring-message ${submitState === 'error' ? 'error' : 'success'}`}>
-          {submitMessage}
+          )}
         </div>
-      ) : null}
+      </div>
     </div>
   </div>;
 };
