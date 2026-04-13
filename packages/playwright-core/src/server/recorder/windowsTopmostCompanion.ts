@@ -32,6 +32,11 @@ type CompanionCommand =
     toolTitlePrefix: string;
   }
   | {
+    kind: 'activateWindowByTitlePrefix';
+    sessionId: string;
+    titlePrefix: string;
+  }
+  | {
     kind: 'restoreToolWindow';
     sessionId: string;
   }
@@ -160,6 +165,16 @@ export class WindowsTopmostCompanion {
     await this._send({
       kind: 'restoreToolWindow',
       sessionId: this._sessionId,
+    });
+  }
+
+  async activateWindowByTitlePrefix(titlePrefix: string): Promise<void> {
+    if (this._disposed || !titlePrefix.trim())
+      return;
+    await this._send({
+      kind: 'activateWindowByTitlePrefix',
+      sessionId: this._sessionId,
+      titlePrefix,
     });
   }
 

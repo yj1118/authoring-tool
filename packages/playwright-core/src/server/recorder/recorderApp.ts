@@ -406,6 +406,8 @@ export class RecorderApp {
   async activate() {
     const inspectedPage = this._inspectedContext?.pages()[0];
     await restoreWindowIfMinimized(inspectedPage).catch(() => {});
+    const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
+    await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle).catch(() => {});
     await inspectedPage?.bringToFront(nullProgress).catch(() => {});
   }
 }
