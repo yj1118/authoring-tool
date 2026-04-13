@@ -61,10 +61,14 @@ export type CaptureOptions = {
   paperFormat?: string;
 };
 
-async function launchContext(options: Options, extraOptions: LaunchOptions): Promise<{ browser: Browser, browserName: string, launchOptions: LaunchOptions, contextOptions: BrowserContextOptions, context: BrowserContext, closeBrowser: () => Promise<void> }> {
+async function launchContext(
+  options: Options,
+  extraOptions: LaunchOptions & { useHostViewport?: boolean },
+): Promise<{ browser: Browser, browserName: string, launchOptions: LaunchOptions, contextOptions: BrowserContextOptions, context: BrowserContext, closeBrowser: () => Promise<void> }> {
   validateOptions(options);
   const browserType = lookupBrowserType(options);
-  const launchOptions: LaunchOptions = extraOptions;
+  const { useHostViewport, ...baseLaunchOptions } = extraOptions;
+  const launchOptions: LaunchOptions = baseLaunchOptions;
   if (options.channel)
     launchOptions.channel = options.channel as any;
   launchOptions.handleSIGINT = false;
@@ -78,6 +82,14 @@ async function launchContext(options: Options, extraOptions: LaunchOptions): Pro
   // Assume high-dpi on MacOS. TODO: this is not perfect.
   if (!extraOptions.headless)
     contextOptions.deviceScaleFactor = os.platform() === 'darwin' ? 2 : 1;
+
+  // Selector authoring should follow the actual browser window size instead of
+  // Playwright's default fixed viewport, otherwise responsive pages can leave
+  // unused white space when the window is larger than 1280x720.
+  if (useHostViewport && !options.viewportSize && !options.device) {
+    contextOptions.viewport = null;
+    delete contextOptions.deviceScaleFactor;
+  }
 
   // Work around the WebKit GTK scrolling issue.
   if (browserType.name() === 'webkit' && process.platform === 'linux') {
@@ -244,6 +256,7 @@ export async function codegen(options: Options & { target: string, output?: stri
     headless: !!process.env.PWTEST_CLI_HEADLESS,
     executablePath: process.env.PWTEST_CLI_EXECUTABLE_PATH,
     tracesDir,
+    useHostViewport: true,
   });
   const donePromise = new ManualPromise<void>();
   maybeSetupTestHooks(browser, closeBrowser, donePromise);
