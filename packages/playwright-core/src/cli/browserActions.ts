@@ -26,6 +26,8 @@ import { program } from 'commander';
 import { gracefullyProcessExitDoNotHang } from '@utils/processLauncher';
 import { ManualPromise } from '@isomorphic/manualPromise';
 import { playwright } from '../inprocess';
+import { tryActivateExistingSelectorAuthoringInstance } from '../server/recorder/selectorAuthoringSingleton';
+import { tryEnsureExistingSelectorAuthoringToolWindowVisible } from '../server/recorder/selectorAuthoringWindowRestore';
 import type { Browser } from '../client/browser';
 import type { BrowserContext } from '../client/browserContext';
 import type { BrowserType } from '../client/browserType';
@@ -252,6 +254,10 @@ export async function open(options: Options, url: string | undefined) {
 export async function codegen(options: Options & { target: string, output?: string, testIdAttribute?: string }, url: string | undefined) {
   const { target: language, output: outputFile, testIdAttribute: testIdAttributeName } = options;
   const isSelectorAuthoring = process.env.TEST_BOT_SELECTOR_AUTHORING_ENABLED === '1';
+  if (isSelectorAuthoring && await tryActivateExistingSelectorAuthoringInstance()) {
+    await tryEnsureExistingSelectorAuthoringToolWindowVisible().catch(() => false);
+    return;
+  }
   const tracesDir = path.join(os.tmpdir(), `playwright-recorder-trace-${Date.now()}`);
   const { context, browser, launchOptions, contextOptions, closeBrowser } = await launchContext(options, {
     headless: !!process.env.PWTEST_CLI_HEADLESS,
@@ -391,3 +397,4 @@ function validateOptions(options: Options) {
   if (options.colorScheme && !['light', 'dark'].includes(options.colorScheme))
     throw new Error('Invalid color scheme, should be one of "light", "dark"');
 }
+

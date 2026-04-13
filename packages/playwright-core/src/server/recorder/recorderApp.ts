@@ -31,6 +31,7 @@ import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
 import { CRPage } from '../chromium/crPage';
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
+import { SelectorAuthoringSingleton } from './selectorAuthoringSingleton';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
@@ -61,6 +62,8 @@ export class RecorderApp {
   private _selectedGeneratorId: string;
   private _frontend: RecorderFrontend;
   private _windowsTopmostCompanion: WindowsTopmostCompanion | null = null;
+  private _selectorAuthoringSingleton: SelectorAuthoringSingleton | null = null;
+  private _inspectedContext: BrowserContext | null = null;
 
   private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
     this._page = page;
@@ -87,6 +90,7 @@ export class RecorderApp {
   }
 
   private async _init(inspectedContext: BrowserContext) {
+    this._inspectedContext = inspectedContext;
     await syncLocalStorageWithSettings(this._page, 'recorder');
 
     const controller = new ProgressController();
@@ -114,6 +118,7 @@ export class RecorderApp {
       await this._createDispatcher(progress, inspectedContext);
 
       this._page.once('close', () => {
+        void this._releaseSelectorAuthoringSingleton();
         void this._releaseWindowsTopmostCompanion();
         this._recorder.close();
         inspectedContext.close(nullProgress, { reason: 'Selector authoring window closed' }).catch(() => {});
@@ -197,6 +202,7 @@ export class RecorderApp {
   }
 
   async close() {
+    await this._releaseSelectorAuthoringSingleton();
     await this._releaseWindowsTopmostCompanion();
     await this._page.close(nullProgress);
   }
@@ -257,6 +263,12 @@ export class RecorderApp {
     const recorderApp = new RecorderApp(recorder, appParams, page, appContext._browser.options.wsEndpoint);
     await recorderApp._init(inspectedContext);
     if (params.hideToolbar) {
+      recorderApp._selectorAuthoringSingleton = await SelectorAuthoringSingleton.start(async () => {
+        await recorderApp.activate();
+      }).catch(error => {
+        console.warn(`[selector-authoring] Failed to start singleton server: ${error instanceof Error ? error.message : String(error)}`); // eslint-disable-line no-console
+        return null;
+      });
       await dockSelectorAuthoringWindows(inspectedContext, page);
       const attachResult = await WindowsTopmostCompanion.attachIfNeeded(inspectedContext, page);
       recorderApp._windowsTopmostCompanion = attachResult.companion;
@@ -287,6 +299,7 @@ export class RecorderApp {
     });
 
     recorder.on(RecorderEvent.ContextClosed, () => {
+      void this._releaseSelectorAuthoringSingleton();
       void this._releaseWindowsTopmostCompanion();
       this._throttledOutputFile?.flush();
       this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
@@ -382,6 +395,18 @@ export class RecorderApp {
     const companion = this._windowsTopmostCompanion;
     this._windowsTopmostCompanion = null;
     await companion?.restoreAndRelease();
+  }
+
+  private async _releaseSelectorAuthoringSingleton() {
+    const singleton = this._selectorAuthoringSingleton;
+    this._selectorAuthoringSingleton = null;
+    await singleton?.close().catch(() => {});
+  }
+
+  async activate() {
+    const inspectedPage = this._inspectedContext?.pages()[0];
+    await restoreWindowIfMinimized(inspectedPage).catch(() => {});
+    await inspectedPage?.bringToFront(nullProgress).catch(() => {});
   }
 }
 
@@ -500,6 +525,21 @@ async function getWindowBounds(page: Page): Promise<DockableWindowBounds> {
   return bounds;
 }
 
+async function restoreWindowIfMinimized(page: Page | undefined): Promise<void> {
+  if (!page)
+    return;
+  const client = chromiumWindowClient(page);
+  const { windowId, bounds } = await client.send('Browser.getWindowForTarget');
+  if (bounds.windowState !== 'minimized')
+    return;
+  await client.send('Browser.setWindowBounds', {
+    windowId,
+    bounds: {
+      windowState: 'normal',
+    },
+  });
+}
+
 async function setWindowBounds(page: Page, bounds: DockableWindowBounds): Promise<void> {
   const client = chromiumWindowClient(page);
   const { windowId } = await client.send('Browser.getWindowForTarget');
@@ -516,3 +556,4 @@ function chromiumWindowClient(page: Page) {
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+

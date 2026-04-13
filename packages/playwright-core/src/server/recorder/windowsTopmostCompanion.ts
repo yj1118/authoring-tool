@@ -32,6 +32,10 @@ type CompanionCommand =
     toolTitlePrefix: string;
   }
   | {
+    kind: 'restoreToolWindow';
+    sessionId: string;
+  }
+  | {
     kind: 'setToolTopmost';
     sessionId: string;
     enabled: boolean;
@@ -150,6 +154,15 @@ export class WindowsTopmostCompanion {
     await this.dispose();
   }
 
+  async restoreToolWindow(): Promise<void> {
+    if (this._disposed)
+      return;
+    await this._send({
+      kind: 'restoreToolWindow',
+      sessionId: this._sessionId,
+    });
+  }
+
   async dispose(): Promise<void> {
     if (this._disposed)
       return;
@@ -250,3 +263,4 @@ function resolveCompanionLaunch(companionPath: string): { command: string, args:
     ],
   };
 }
+
