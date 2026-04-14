@@ -23,7 +23,7 @@ import type { RecorderBackend, RecorderFrontend, SelectorAuthoringDiagnostic } f
 
 type SelectorEntry = {
   id: string;
-  pageUrl?: string;
+  note: string;
   selector: string;
   selectedAt: string;
 };
@@ -66,7 +66,7 @@ export const Recorder: React.FC = ({}) => {
       elementPicked: ({ elementInfo }) => {
         const entry: SelectorEntry = {
           id: `selector-${++nextEntryId.current}`,
-          pageUrl,
+          note: '',
           selector: elementInfo.selector,
           selectedAt: new Date().toISOString(),
         };
@@ -108,6 +108,10 @@ export const Recorder: React.FC = ({}) => {
     const nextEntry = nextSelectedEntryId ? nextEntries.find(entry => entry.id === nextSelectedEntryId) : undefined;
     void backend.highlightRequested(nextEntry?.selector ? { selector: nextEntry.selector } : {});
   }, [backend, entries, selectedEntryId]);
+
+  const updateEntryNote = React.useCallback((entryId: string, note: string) => {
+    setEntries(current => current.map(entry => entry.id === entryId ? { ...entry, note } : entry));
+  }, []);
 
   const clearEntries = React.useCallback(() => {
     setEntries([]);
@@ -159,18 +163,34 @@ export const Recorder: React.FC = ({}) => {
             const copyLabel = copiedEntryId === entry.id ? 'Copied' : 'Copy';
             return (
               <div className={`selector-authoring-entry ${isSelected ? 'selected' : ''}`} key={entry.id}>
-                <button className='selector-authoring-entry-main' onClick={() => selectEntry(entry.id)} type='button'>
+                <div
+                  className='selector-authoring-entry-main'
+                  onClick={() => selectEntry(entry.id)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ')
+                      selectEntry(entry.id);
+                  }}
+                  role='button'
+                  tabIndex={0}
+                >
                   <div className='selector-authoring-entry-top'>
                     <div className='selector-authoring-entry-order'>{index + 1}</div>
+                    <input
+                      className='selector-authoring-entry-note'
+                      onChange={event => updateEntryNote(entry.id, event.target.value)}
+                      onClick={event => event.stopPropagation()}
+                      onFocus={() => selectEntry(entry.id)}
+                      onKeyDown={event => event.stopPropagation()}
+                      placeholder='Add an optional note here'
+                      type='text'
+                      value={entry.note}
+                    />
                     <div className='selector-authoring-entry-time'>{formatTimestamp(entry.selectedAt)}</div>
                   </div>
                   <div className='selector-authoring-entry-selector'>
                     <div className='selector-authoring-entry-code' title={entry.selector}>{entry.selector}</div>
                   </div>
-                  <div className='selector-authoring-entry-meta'>
-                    <div className='selector-authoring-meta-chip page' title={entry.pageUrl || ''}>{entry.pageUrl || '--'}</div>
-                  </div>
-                </button>
+                </div>
                 <div className='selector-authoring-entry-actions'>
                   <button className='selector-authoring-secondary-button' onClick={() => copyEntry(entry)} type='button'>{copyLabel}</button>
                   <button className='selector-authoring-secondary-button danger' onClick={() => removeEntry(entry.id)} type='button'>Remove</button>
