@@ -20,9 +20,6 @@ type RecorderMessages = {
   windowTitle: string;
   pickSelector: string;
   stopPicking: string;
-  done: string;
-  ready: string;
-  pickingLive: string;
   savedCount: (count: number) => string;
   clearAll: string;
   copied: string;
@@ -39,9 +36,6 @@ const messages: Record<RecorderLocale, RecorderMessages> = {
     windowTitle: 'Selector Authoring Tool',
     pickSelector: 'Pick selector',
     stopPicking: 'Stop picking',
-    done: 'Done',
-    ready: 'Ready',
-    pickingLive: 'Picking live',
     savedCount: count => `${count} saved`,
     clearAll: 'Clear all',
     copied: 'Copied',
@@ -56,9 +50,6 @@ const messages: Record<RecorderLocale, RecorderMessages> = {
     windowTitle: '选择器工具',
     pickSelector: '选择元素',
     stopPicking: '停止选择',
-    done: '完成',
-    ready: '就绪',
-    pickingLive: '选择中',
     savedCount: count => `已保存 ${count} 个`,
     clearAll: '清空全部',
     copied: '已复制',
@@ -73,9 +64,6 @@ const messages: Record<RecorderLocale, RecorderMessages> = {
     windowTitle: '選擇器工具',
     pickSelector: '選取元素',
     stopPicking: '停止選取',
-    done: '完成',
-    ready: '就緒',
-    pickingLive: '選取中',
     savedCount: count => `已儲存 ${count} 個`,
     clearAll: '清空全部',
     copied: '已複製',
@@ -90,9 +78,6 @@ const messages: Record<RecorderLocale, RecorderMessages> = {
     windowTitle: 'セレクターツール',
     pickSelector: '要素を選択',
     stopPicking: '選択を停止',
-    done: '完了',
-    ready: '準備完了',
-    pickingLive: '選択中',
     savedCount: count => `${count} 件保存済み`,
     clearAll: 'すべてクリア',
     copied: 'コピー済み',

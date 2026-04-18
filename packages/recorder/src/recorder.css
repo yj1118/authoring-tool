@@ -187,7 +187,13 @@
 }
 
 .selector-authoring-primary-button.toggled {
-  background: linear-gradient(180deg, #0c5cab, #084f96);
+  border-color: rgba(191, 59, 48, 0.28);
+  background: linear-gradient(180deg, #d85646, #bf3b30);
+  box-shadow: 0 8px 16px rgba(191, 59, 48, 0.24);
+}
+
+.selector-authoring-primary-button.toggled:hover {
+  box-shadow: 0 12px 22px rgba(191, 59, 48, 0.28);
 }
 
 .selector-authoring-collection {
@@ -447,24 +453,6 @@
   border-color: rgba(191, 59, 48, 0.18);
 }
 
-.selector-authoring-status {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.selector-authoring-status.is-ready {
-  color: #1c8456;
-  background: rgba(28, 132, 86, 0.12);
-}
-
-.selector-authoring-status.is-picking {
-  color: var(--sa-accent);
-  background: var(--sa-accent-soft);
-}
-
 .recorder-chooser {
   border: none;
   background: none;
@@ -534,16 +522,6 @@
     padding: 10px;
   }
 
-  .selector-authoring-collection-header,
-  .selector-authoring-collection {
-    margin-left: 16px;
-    margin-right: 16px;
-  }
-
-  .selector-authoring-collection {
-    margin-bottom: 16px;
-  }
-
   .selector-authoring-collection {
     padding: 12px;
   }
@@ -553,8 +531,8 @@
   }
 
   .selector-authoring-collection {
-    margin-left: 16px;
-    margin-right: 16px;
+    margin-left: 5px;
+    margin-right: 5px;
     margin-bottom: 16px;
   }
 

@@ -86,7 +86,6 @@ export const Recorder: React.FC = ({}) => {
   }, [i18n.windowTitle, pageUrl]);
 
   const isPicking = mode === 'inspecting' || mode === 'recording-inspecting';
-  const statusLabel = isPicking ? i18n.pickingLive : i18n.ready;
   const selectEntry = React.useCallback((entryId: string) => {
     const entry = entries.find(candidate => candidate.id === entryId);
     setSelectedEntryId(entryId);
@@ -123,10 +122,6 @@ export const Recorder: React.FC = ({}) => {
     void backend.highlightRequested({});
   }, [backend]);
 
-  const closeSession = React.useCallback(() => {
-    backend.closeSelectorAuthoringSession().catch(() => { });
-  }, [backend]);
-
   return <div className='recorder'>
     <div className='selector-authoring-main'>
       {selectorAuthoringDiagnostic ? (
@@ -148,13 +143,9 @@ export const Recorder: React.FC = ({}) => {
               >
                 {isPicking ? i18n.stopPicking : i18n.pickSelector}
               </button>
-              <button className='selector-authoring-secondary-button' onClick={closeSession} type='button'>{i18n.done}</button>
             </div>
           </div>
           <div className='selector-authoring-header-side'>
-            <div className={`selector-authoring-status ${isPicking ? 'is-picking' : 'is-ready'}`}>
-              {statusLabel}
-            </div>
             <span className='selector-authoring-count'>{i18n.savedCount(entries.length)}</span>
             <button className='selector-authoring-text-button' disabled={!entries.length} onClick={clearEntries} type='button'>{i18n.clearAll}</button>
           </div>
