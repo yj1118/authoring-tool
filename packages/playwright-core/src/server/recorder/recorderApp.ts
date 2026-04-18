@@ -227,12 +227,13 @@ export class RecorderApp {
     const sdkLanguage = inspectedContext._browser.sdkLanguage();
     const isChromium = inspectedContext._browser.options.browserType === 'chromium';
     const headed = !!inspectedContext._browser.options.headful;
+    const initialDockLayout = params.hideToolbar ? await computeSelectorAuthoringDockLayout(inspectedContext.pages()[0]).catch(() => null) : null;
     const { createPlaywright } = require('../playwright') as typeof import('../playwright');
     const recorderPlaywright = createPlaywright({ sdkLanguage: 'javascript', isInternalPlaywright: true });
     const { context: appContext, page } = await launchApp(recorderPlaywright.chromium, {
       sdkLanguage,
-      windowSize: { width: 580, height: 760 },
-      windowPosition: { x: 1020, y: 10 },
+      windowSize: initialDockLayout ? { width: initialDockLayout.toolBounds.width, height: initialDockLayout.toolBounds.height } : { width: 580, height: 760 },
+      windowPosition: initialDockLayout ? { x: initialDockLayout.toolBounds.left, y: initialDockLayout.toolBounds.top } : { x: 1020, y: 10 },
       persistentContextOptions: {
         noDefaultViewport: true,
         headless: !!process.env.PWTEST_CLI_HEADLESS || (isUnderTest() && !headed),
@@ -303,6 +304,8 @@ export class RecorderApp {
 
     recorder.on(RecorderEvent.PageNavigated, (url: string) => {
       this._frontend.pageNavigated({ url });
+      if (this._inspectedContext)
+        void dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     });
 
     recorder.on(RecorderEvent.ContextClosed, () => {
@@ -413,6 +416,8 @@ export class RecorderApp {
   async activate() {
     const inspectedPage = this._inspectedContext?.pages()[0];
     await restoreWindowIfMinimized(inspectedPage).catch(() => {});
+    if (this._inspectedContext)
+      await dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
     await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle).catch(() => {});
     await inspectedPage?.bringToFront(nullProgress).catch(() => {});
@@ -524,6 +529,28 @@ type DockableWindowBounds = {
   height?: number;
 };
 
+type DockedWindowLayout = {
+  inspectedBounds: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  toolBounds: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+};
+
+type ScreenWorkAreaSnapshot = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, toolPage: Page): Promise<void> {
   if (inspectedContext._browser.options.browserType !== 'chromium')
     return;
@@ -532,35 +559,83 @@ async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, to
   if (!inspectedPage)
     return;
 
-  const inspectedBounds = await getWindowBounds(inspectedPage).catch(() => null);
-  if (!inspectedBounds)
+  await Promise.all([
+    restoreWindowIfMinimized(inspectedPage),
+    restoreWindowIfMinimized(toolPage),
+  ]).catch(() => {});
+
+  const dockLayout = await computeSelectorAuthoringDockLayout(inspectedPage).catch(() => null);
+  if (!dockLayout)
     return;
 
-  const hostLeft = inspectedBounds.left ?? 0;
-  const hostTop = inspectedBounds.top ?? 0;
-  const hostWidth = clamp(inspectedBounds.width ?? 1280, 900, 2400);
-  const hostHeight = clamp(inspectedBounds.height ?? 900, 600, 1600);
-
-  const toolWidth = clamp(Math.round(hostWidth * 0.36), 580, 680);
-  const inspectedWidth = Math.max(720, hostWidth - toolWidth);
-
   await Promise.all([
-    setWindowBounds(inspectedPage, {
-      left: hostLeft,
-      top: hostTop,
-      width: inspectedWidth,
-      height: hostHeight,
-    }),
-    setWindowBounds(toolPage, {
-      left: hostLeft + inspectedWidth,
-      top: hostTop,
-      width: toolWidth,
-      height: hostHeight,
-    }),
+    setWindowBounds(inspectedPage, dockLayout.inspectedBounds),
+    setWindowBounds(toolPage, dockLayout.toolBounds),
   ]).catch(() => {});
 
   await toolPage.bringToFront(nullProgress).catch(() => {});
   await inspectedPage.bringToFront(nullProgress).catch(() => {});
+}
+
+async function computeSelectorAuthoringDockLayout(inspectedPage: Page | undefined): Promise<DockedWindowLayout | null> {
+  if (!inspectedPage)
+    return null;
+
+  const [inspectedBounds, screenWorkArea] = await Promise.all([
+    getWindowBounds(inspectedPage).catch(() => null),
+    getScreenWorkArea(inspectedPage).catch(() => null),
+  ]);
+  if (!inspectedBounds)
+    return null;
+
+  const totalLeft = screenWorkArea?.left ?? inspectedBounds.left ?? 0;
+  const totalTop = screenWorkArea?.top ?? inspectedBounds.top ?? 0;
+  const totalWidth = Math.round(screenWorkArea?.width ?? inspectedBounds.width ?? 1440);
+  const totalHeight = Math.round(screenWorkArea?.height ?? inspectedBounds.height ?? 900);
+  const inspectedWidth = Math.round(totalWidth * 0.7);
+  const toolWidth = totalWidth - inspectedWidth;
+
+  return {
+    inspectedBounds: {
+      left: totalLeft,
+      top: totalTop,
+      width: inspectedWidth,
+      height: totalHeight,
+    },
+    toolBounds: {
+      left: totalLeft + inspectedWidth,
+      top: totalTop,
+      width: toolWidth,
+      height: totalHeight,
+    },
+  };
+}
+
+async function getScreenWorkArea(page: Page): Promise<ScreenWorkAreaSnapshot | null> {
+  const payload = await page.mainFrame().evaluateExpression(nullProgress, String(() => {
+    const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
+    return {
+      availLeft: typeof screenAny.availLeft === 'number' ? screenAny.availLeft : window.screenX,
+      availTop: typeof screenAny.availTop === 'number' ? screenAny.availTop : window.screenY,
+      availWidth: window.screen.availWidth,
+      availHeight: window.screen.availHeight,
+    };
+  }), { isFunction: true, world: 'utility' }).catch(() => null) as {
+    availLeft?: number;
+    availTop?: number;
+    availWidth?: number;
+    availHeight?: number;
+  } | null;
+
+  if (!payload || !payload.availWidth || !payload.availHeight)
+    return null;
+
+  return {
+    left: Math.round(payload.availLeft ?? 0),
+    top: Math.round(payload.availTop ?? 0),
+    width: Math.round(payload.availWidth),
+    height: Math.round(payload.availHeight),
+  };
 }
 
 async function getWindowBounds(page: Page): Promise<DockableWindowBounds> {
@@ -586,7 +661,15 @@ async function restoreWindowIfMinimized(page: Page | undefined): Promise<void> {
 
 async function setWindowBounds(page: Page, bounds: DockableWindowBounds): Promise<void> {
   const client = chromiumWindowClient(page);
-  const { windowId } = await client.send('Browser.getWindowForTarget');
+  const { windowId, bounds: currentBounds } = await client.send('Browser.getWindowForTarget');
+  if (currentBounds.windowState && currentBounds.windowState !== 'normal') {
+    await client.send('Browser.setWindowBounds', {
+      windowId,
+      bounds: {
+        windowState: 'normal',
+      },
+    });
+  }
   await client.send('Browser.setWindowBounds', {
     windowId,
     bounds,
@@ -595,9 +678,5 @@ async function setWindowBounds(page: Page, bounds: DockableWindowBounds): Promis
 
 function chromiumWindowClient(page: Page) {
   return (page.delegate as CRPage)._mainFrameSession._client;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }
 

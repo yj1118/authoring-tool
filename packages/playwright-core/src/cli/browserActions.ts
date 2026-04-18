@@ -245,6 +245,46 @@ async function openPage(context: BrowserContext, url: string | undefined): Promi
   return page;
 }
 
+async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext, page: Page): Promise<void> {
+  const screenWorkArea = await page.evaluate(() => {
+    const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
+    return {
+      left: typeof screenAny.availLeft === 'number' ? screenAny.availLeft : window.screenX,
+      top: typeof screenAny.availTop === 'number' ? screenAny.availTop : window.screenY,
+      width: window.screen.availWidth,
+      height: window.screen.availHeight,
+    };
+  }).catch(() => null) as {
+    left?: number;
+    top?: number;
+    width?: number;
+    height?: number;
+  } | null;
+  if (!screenWorkArea?.width || !screenWorkArea.height)
+    return;
+
+  const browserWidth = Math.round(screenWorkArea.width * 0.7);
+  const session = await context.newCDPSession(page);
+  const { windowId, bounds } = await session.send('Browser.getWindowForTarget');
+  if (bounds.windowState && bounds.windowState !== 'normal') {
+    await session.send('Browser.setWindowBounds', {
+      windowId,
+      bounds: {
+        windowState: 'normal',
+      },
+    }).catch(() => {});
+  }
+  await session.send('Browser.setWindowBounds', {
+    windowId,
+    bounds: {
+      left: Math.round(screenWorkArea.left ?? 0),
+      top: Math.round(screenWorkArea.top ?? 0),
+      width: browserWidth,
+      height: Math.round(screenWorkArea.height),
+    },
+  }).catch(() => {});
+}
+
 export async function open(options: Options, url: string | undefined) {
   const { context } = await launchContext(options, { headless: !!process.env.PWTEST_CLI_HEADLESS, executablePath: process.env.PWTEST_CLI_EXECUTABLE_PATH });
   await context._exposeConsoleApi();
@@ -265,6 +305,9 @@ export async function codegen(options: Options & { target: string, output?: stri
     tracesDir,
     useHostViewport: true,
   });
+  const initialPage = isSelectorAuthoring && browser.browserType().name() === 'chromium' ? await openPage(context, undefined) : undefined;
+  if (initialPage)
+    await applySelectorAuthoringInitialWindowLayout(context, initialPage).catch(() => {});
   const donePromise = new ManualPromise<void>();
   maybeSetupTestHooks(browser, closeBrowser, donePromise);
   dotenv.config({ path: 'playwright.env' });
