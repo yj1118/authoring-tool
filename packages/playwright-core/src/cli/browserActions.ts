@@ -247,13 +247,13 @@ async function openPage(context: BrowserContext, url: string | undefined): Promi
 }
 
 async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext, page: Page): Promise<void> {
-  const screenMetrics = await getSelectorAuthoringScreenMetrics(page);
+  const session = await context.newCDPSession(page);
+  const { windowId, bounds } = await session.send('Browser.getWindowForTarget');
+  const screenMetrics = await getSelectorAuthoringScreenMetrics(page, bounds);
   if (!screenMetrics)
     return;
 
   const browserBounds = computeSelectorAuthoringInitialBrowserBounds(screenMetrics);
-  const session = await context.newCDPSession(page);
-  const { windowId, bounds } = await session.send('Browser.getWindowForTarget');
   if (bounds.windowState && bounds.windowState !== 'normal') {
     await session.send('Browser.setWindowBounds', {
       windowId,
@@ -268,7 +268,7 @@ async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext
   }).catch(() => {});
 }
 
-async function getSelectorAuthoringScreenMetrics(page: Page) {
+async function getSelectorAuthoringScreenMetrics(page: Page, windowBounds: { left?: number, top?: number, width?: number, height?: number }) {
   const payload = await page.evaluate(() => {
     const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
     return {
@@ -277,8 +277,10 @@ async function getSelectorAuthoringScreenMetrics(page: Page) {
       width: window.screen.availWidth,
       height: window.screen.availHeight,
       devicePixelRatio: window.devicePixelRatio,
-      screenWidth: window.screen.width,
-      screenHeight: window.screen.height,
+      visualLeft: window.screenX,
+      visualTop: window.screenY,
+      visualWidth: window.outerWidth,
+      visualHeight: window.outerHeight,
     };
   }).catch(() => null) as {
     left?: number;
@@ -286,10 +288,18 @@ async function getSelectorAuthoringScreenMetrics(page: Page) {
     width?: number;
     height?: number;
     devicePixelRatio?: number;
-    screenWidth?: number;
-    screenHeight?: number;
+    visualLeft?: number;
+    visualTop?: number;
+    visualWidth?: number;
+    visualHeight?: number;
   } | null;
-  return normalizeSelectorAuthoringScreenMetrics(payload);
+  return normalizeSelectorAuthoringScreenMetrics(payload ? {
+    ...payload,
+    nativeLeft: windowBounds.left,
+    nativeTop: windowBounds.top,
+    nativeWidth: windowBounds.width,
+    nativeHeight: windowBounds.height,
+  } : null);
 }
 
 export async function open(options: Options, url: string | undefined) {

@@ -133,9 +133,9 @@ export class RecorderApp {
     const url = this._recorder.url();
     this._frontend.localeChanged({
       locale: await resolveSelectorAuthoringLocale(
-        process.env.TEST_BOT_SELECTOR_AUTHORING_UI_LOCALE,
-        inspectedContext,
-        this._languageGeneratorOptions.contextOptions.locale,
+          process.env.TEST_BOT_SELECTOR_AUTHORING_UI_LOCALE,
+          inspectedContext,
+          this._languageGeneratorOptions.contextOptions.locale,
       ),
     });
     if (url)
@@ -502,9 +502,9 @@ async function resolveSelectorAuthoringLocale(explicitLocale: string | undefined
   }), { isFunction: true, world: 'utility' }).catch(() => null) as { documentLanguage?: string; navigatorLanguage?: string } | null;
 
   return normalizeSelectorAuthoringLocale(
-    payload?.documentLanguage
-    || payload?.navigatorLanguage
-    || fallbackLocale
+      payload?.documentLanguage
+      || payload?.navigatorLanguage
+      || fallbackLocale
   );
 }
 
@@ -567,26 +567,33 @@ async function computeSelectorAuthoringDockLayoutForPage(inspectedPage: Page | u
 }
 
 async function getSelectorAuthoringScreenMetrics(page: Page) {
-  const payload = await page.mainFrame().evaluateExpression(nullProgress, String(() => {
-    const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
-    return {
-      availLeft: typeof screenAny.availLeft === 'number' ? screenAny.availLeft : window.screenX,
-      availTop: typeof screenAny.availTop === 'number' ? screenAny.availTop : window.screenY,
-      availWidth: window.screen.availWidth,
-      availHeight: window.screen.availHeight,
-      devicePixelRatio: window.devicePixelRatio,
-      screenWidth: window.screen.width,
-      screenHeight: window.screen.height,
-    };
-  }), { isFunction: true, world: 'utility' }).catch(() => null) as {
-    availLeft?: number;
-    availTop?: number;
-    availWidth?: number;
-    availHeight?: number;
-    devicePixelRatio?: number;
-    screenWidth?: number;
-    screenHeight?: number;
-  } | null;
+  const [windowBounds, payload] = await Promise.all([
+    getWindowBounds(page).catch(() => null),
+    page.mainFrame().evaluateExpression(nullProgress, String(() => {
+      const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
+      return {
+        availLeft: typeof screenAny.availLeft === 'number' ? screenAny.availLeft : window.screenX,
+        availTop: typeof screenAny.availTop === 'number' ? screenAny.availTop : window.screenY,
+        availWidth: window.screen.availWidth,
+        availHeight: window.screen.availHeight,
+        devicePixelRatio: window.devicePixelRatio,
+        visualLeft: window.screenX,
+        visualTop: window.screenY,
+        visualWidth: window.outerWidth,
+        visualHeight: window.outerHeight,
+      };
+    }), { isFunction: true, world: 'utility' }).catch(() => null) as {
+      availLeft?: number;
+      availTop?: number;
+      availWidth?: number;
+      availHeight?: number;
+      devicePixelRatio?: number;
+      visualLeft?: number;
+      visualTop?: number;
+      visualWidth?: number;
+      visualHeight?: number;
+    } | null,
+  ]);
 
   return normalizeSelectorAuthoringScreenMetrics(payload ? {
     left: payload.availLeft,
@@ -594,9 +601,21 @@ async function getSelectorAuthoringScreenMetrics(page: Page) {
     width: payload.availWidth,
     height: payload.availHeight,
     devicePixelRatio: payload.devicePixelRatio,
-    screenWidth: payload.screenWidth,
-    screenHeight: payload.screenHeight,
+    visualLeft: payload.visualLeft,
+    visualTop: payload.visualTop,
+    visualWidth: payload.visualWidth,
+    visualHeight: payload.visualHeight,
+    nativeLeft: windowBounds?.left,
+    nativeTop: windowBounds?.top,
+    nativeWidth: windowBounds?.width,
+    nativeHeight: windowBounds?.height,
   } : null);
+}
+
+async function getWindowBounds(page: Page): Promise<DockableWindowBounds> {
+  const client = chromiumWindowClient(page);
+  const { bounds } = await client.send('Browser.getWindowForTarget');
+  return bounds;
 }
 
 async function restoreWindowIfMinimized(page: Page | undefined): Promise<void> {
@@ -634,4 +653,3 @@ async function setWindowBounds(page: Page, bounds: DockableWindowBounds): Promis
 function chromiumWindowClient(page: Page) {
   return (page.delegate as CRPage)._mainFrameSession._client;
 }
-
