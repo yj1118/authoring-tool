@@ -26,6 +26,7 @@ import { program } from 'commander';
 import { gracefullyProcessExitDoNotHang } from '@utils/processLauncher';
 import { ManualPromise } from '@isomorphic/manualPromise';
 import { playwright } from '../inprocess';
+import { computeSelectorAuthoringInitialBrowserBounds, normalizeSelectorAuthoringScreenMetrics } from '../server/recorder/selectorAuthoringGeometry';
 import { tryActivateExistingSelectorAuthoringInstance } from '../server/recorder/selectorAuthoringSingleton';
 import { tryEnsureExistingSelectorAuthoringToolWindowVisible } from '../server/recorder/selectorAuthoringWindowRestore';
 import type { Browser } from '../client/browser';
@@ -246,24 +247,11 @@ async function openPage(context: BrowserContext, url: string | undefined): Promi
 }
 
 async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext, page: Page): Promise<void> {
-  const screenWorkArea = await page.evaluate(() => {
-    const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
-    return {
-      left: typeof screenAny.availLeft === 'number' ? screenAny.availLeft : window.screenX,
-      top: typeof screenAny.availTop === 'number' ? screenAny.availTop : window.screenY,
-      width: window.screen.availWidth,
-      height: window.screen.availHeight,
-    };
-  }).catch(() => null) as {
-    left?: number;
-    top?: number;
-    width?: number;
-    height?: number;
-  } | null;
-  if (!screenWorkArea?.width || !screenWorkArea.height)
+  const screenMetrics = await getSelectorAuthoringScreenMetrics(page);
+  if (!screenMetrics)
     return;
 
-  const browserWidth = Math.round(screenWorkArea.width * 0.7);
+  const browserBounds = computeSelectorAuthoringInitialBrowserBounds(screenMetrics);
   const session = await context.newCDPSession(page);
   const { windowId, bounds } = await session.send('Browser.getWindowForTarget');
   if (bounds.windowState && bounds.windowState !== 'normal') {
@@ -276,13 +264,32 @@ async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext
   }
   await session.send('Browser.setWindowBounds', {
     windowId,
-    bounds: {
-      left: Math.round(screenWorkArea.left ?? 0),
-      top: Math.round(screenWorkArea.top ?? 0),
-      width: browserWidth,
-      height: Math.round(screenWorkArea.height),
-    },
+    bounds: browserBounds,
   }).catch(() => {});
+}
+
+async function getSelectorAuthoringScreenMetrics(page: Page) {
+  const payload = await page.evaluate(() => {
+    const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
+    return {
+      left: typeof screenAny.availLeft === 'number' ? screenAny.availLeft : window.screenX,
+      top: typeof screenAny.availTop === 'number' ? screenAny.availTop : window.screenY,
+      width: window.screen.availWidth,
+      height: window.screen.availHeight,
+      devicePixelRatio: window.devicePixelRatio,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+    };
+  }).catch(() => null) as {
+    left?: number;
+    top?: number;
+    width?: number;
+    height?: number;
+    devicePixelRatio?: number;
+    screenWidth?: number;
+    screenHeight?: number;
+  } | null;
+  return normalizeSelectorAuthoringScreenMetrics(payload);
 }
 
 export async function open(options: Options, url: string | undefined) {
