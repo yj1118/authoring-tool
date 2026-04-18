@@ -97,6 +97,8 @@ export type Source = {
   actions?: string[];
 };
 
+export type RecorderLocale = 'en' | 'zh-CN' | 'zh-TW' | 'ja-JP';
+
 export type SelectorAuthoringClipboardPayload = {
   attempted: true;
   ok: boolean;
@@ -130,6 +132,7 @@ export interface RecorderBackend {
 
 export interface RecorderFrontend {
   modeChanged: (params: { mode: Mode }) => void;
+  localeChanged: (params: { locale: RecorderLocale }) => void;
   pauseStateChanged: (params: { paused: boolean }) => void;
   sourcesUpdated: (params: { sources: Source[] }) => void;
   sourceRevealRequested: (params: { sourceId: string }) => void;

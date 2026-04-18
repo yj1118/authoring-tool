@@ -17,9 +17,10 @@
 import type { CallLog, Mode, Source } from './recorderTypes';
 import * as React from 'react';
 import './recorder.css';
+import { getRecorderMessages, normalizeRecorderLocale } from './messages';
 import { copySelectorToClipboard } from './selectorAuthoring';
 
-import type { RecorderBackend, RecorderFrontend, SelectorAuthoringDiagnostic } from './recorderTypes';
+import type { RecorderBackend, RecorderFrontend, RecorderLocale, SelectorAuthoringDiagnostic } from './recorderTypes';
 
 type SelectorEntry = {
   id: string;
@@ -32,12 +33,14 @@ export const Recorder: React.FC = ({}) => {
   const [, setSources] = React.useState<Source[]>([]);
   const [mode, setMode] = React.useState<Mode>('none');
   const backend = React.useMemo(createRecorderBackend, []);
+  const [locale, setLocale] = React.useState<RecorderLocale>(() => normalizeRecorderLocale(window.navigator.language));
   const [entries, setEntries] = React.useState<SelectorEntry[]>([]);
   const [selectedEntryId, setSelectedEntryId] = React.useState<string | undefined>();
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [copiedEntryId, setCopiedEntryId] = React.useState<string | undefined>();
   const [selectorAuthoringDiagnostic, setSelectorAuthoringDiagnostic] = React.useState<SelectorAuthoringDiagnostic | null>(null);
   const nextEntryId = React.useRef(0);
+  const i18n = React.useMemo(() => getRecorderMessages(locale), [locale]);
 
   React.useEffect(() => {
     if (!copiedEntryId)
@@ -48,18 +51,14 @@ export const Recorder: React.FC = ({}) => {
 
   React.useLayoutEffect(() => {
     const dispatcher: RecorderFrontend = {
+      localeChanged: ({ locale }) => setLocale(locale),
       modeChanged: ({ mode }) => setMode(mode),
       selectorAuthoringDiagnosticChanged: ({ diagnostic }) => setSelectorAuthoringDiagnostic(diagnostic),
       sourcesUpdated: ({ sources }) => {
         setSources(sources);
         window.playwrightSourcesEchoForTest = sources;
       },
-      pageNavigated: ({ url }) => {
-        setPageUrl(url);
-        document.title = url
-          ? `Selector Authoring Tool - ${url}`
-          : 'Selector Authoring Tool';
-      },
+      pageNavigated: ({ url }) => setPageUrl(url),
       pauseStateChanged: () => {},
       callLogsUpdated: (_params: { callLogs: CallLog[] }) => {},
       sourceRevealRequested: () => {},
@@ -80,10 +79,14 @@ export const Recorder: React.FC = ({}) => {
     window.dispatch = (data: { method: string; params?: any }) => {
       (dispatcher as any)[data.method].call(dispatcher, data.params);
     };
-  }, [backend, mode, pageUrl]);
+  }, [backend, mode]);
+
+  React.useEffect(() => {
+    document.title = pageUrl ? `${i18n.windowTitle} - ${pageUrl}` : i18n.windowTitle;
+  }, [i18n.windowTitle, pageUrl]);
 
   const isPicking = mode === 'inspecting' || mode === 'recording-inspecting';
-  const statusLabel = isPicking ? 'Picking live' : 'Ready';
+  const statusLabel = isPicking ? i18n.pickingLive : i18n.ready;
   const selectEntry = React.useCallback((entryId: string) => {
     const entry = entries.find(candidate => candidate.id === entryId);
     setSelectedEntryId(entryId);
@@ -143,24 +146,24 @@ export const Recorder: React.FC = ({}) => {
                 }}
                 type='button'
               >
-                {isPicking ? 'Stop picking' : 'Pick selector'}
+                {isPicking ? i18n.stopPicking : i18n.pickSelector}
               </button>
-              <button className='selector-authoring-secondary-button' onClick={closeSession} type='button'>Done</button>
+              <button className='selector-authoring-secondary-button' onClick={closeSession} type='button'>{i18n.done}</button>
             </div>
           </div>
           <div className='selector-authoring-header-side'>
             <div className={`selector-authoring-status ${isPicking ? 'is-picking' : 'is-ready'}`}>
               {statusLabel}
             </div>
-            <span className='selector-authoring-count'>{entries.length} saved</span>
-            <button className='selector-authoring-text-button' disabled={!entries.length} onClick={clearEntries} type='button'>Clear all</button>
+            <span className='selector-authoring-count'>{i18n.savedCount(entries.length)}</span>
+            <button className='selector-authoring-text-button' disabled={!entries.length} onClick={clearEntries} type='button'>{i18n.clearAll}</button>
           </div>
         </div>
 
         <div className='selector-authoring-collection'>
           {entries.length ? entries.map((entry, index) => {
             const isSelected = entry.id === selectedEntryId;
-            const copyLabel = copiedEntryId === entry.id ? 'Copied' : 'Copy';
+            const copyLabel = copiedEntryId === entry.id ? i18n.copied : i18n.copy;
             return (
               <div className={`selector-authoring-entry ${isSelected ? 'selected' : ''}`} key={entry.id}>
                 <div
@@ -181,7 +184,7 @@ export const Recorder: React.FC = ({}) => {
                       onClick={event => event.stopPropagation()}
                       onFocus={() => selectEntry(entry.id)}
                       onKeyDown={event => event.stopPropagation()}
-                      placeholder='Add an optional note here'
+                      placeholder={i18n.notePlaceholder}
                       type='text'
                       value={entry.note}
                     />
@@ -193,15 +196,15 @@ export const Recorder: React.FC = ({}) => {
                 </div>
                 <div className='selector-authoring-entry-actions'>
                   <button className='selector-authoring-secondary-button' onClick={() => copyEntry(entry)} type='button'>{copyLabel}</button>
-                  <button className='selector-authoring-secondary-button danger' onClick={() => removeEntry(entry.id)} type='button'>Remove</button>
+                  <button className='selector-authoring-secondary-button danger' onClick={() => removeEntry(entry.id)} type='button'>{i18n.remove}</button>
                 </div>
               </div>
             );
           }) : (
             <div className='selector-authoring-empty'>
-              <div className='selector-authoring-empty-title'>No selectors saved yet</div>
+              <div className='selector-authoring-empty-title'>{i18n.emptyTitle}</div>
               <div className='selector-authoring-empty-copy'>
-                Start with <strong>Pick selector</strong>, then click elements in the page to build a reusable selector list.
+                {i18n.emptyPrefix}<strong>{i18n.pickSelector}</strong>{i18n.emptySuffix}
               </div>
             </div>
           )}

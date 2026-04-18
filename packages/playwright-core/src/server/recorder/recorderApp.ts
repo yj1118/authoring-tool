@@ -35,7 +35,7 @@ import { SelectorAuthoringSingleton } from './selectorAuthoringSingleton';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
-import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, Source } from '@recorder/recorderTypes';
+import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, RecorderLocale, Source } from '@recorder/recorderTypes';
 import type { Language, LanguageGeneratorOptions } from '../codegen/types';
 import type * as channels from '@protocol/channels';
 import type { Progress } from '../progress';
@@ -130,6 +130,13 @@ export class RecorderApp {
     });
 
     const url = this._recorder.url();
+    this._frontend.localeChanged({
+      locale: await resolveSelectorAuthoringLocale(
+        process.env.TEST_BOT_SELECTOR_AUTHORING_UI_LOCALE,
+        inspectedContext,
+        this._languageGeneratorOptions.contextOptions.locale,
+      ),
+    });
     if (url)
       this._frontend.pageNavigated({ url });
     this._frontend.modeChanged({ mode: this._recorder.mode() });
@@ -471,6 +478,41 @@ function createRecorderFrontend(page: Page): RecorderFrontend {
       };
     },
   });
+}
+
+async function resolveSelectorAuthoringLocale(explicitLocale: string | undefined, inspectedContext: BrowserContext, fallbackLocale: string | undefined): Promise<RecorderLocale> {
+  if ((explicitLocale || '').trim())
+    return normalizeSelectorAuthoringLocale(explicitLocale);
+
+  const inspectedPage = inspectedContext.pages()[0];
+  if (!inspectedPage)
+    return normalizeSelectorAuthoringLocale(fallbackLocale);
+
+  const payload = await inspectedPage.mainFrame().evaluateExpression(nullProgress, String(() => {
+    return {
+      documentLanguage: document.documentElement.lang || '',
+      navigatorLanguage: navigator.language || '',
+    };
+  }), { isFunction: true, world: 'utility' }).catch(() => null) as { documentLanguage?: string; navigatorLanguage?: string } | null;
+
+  return normalizeSelectorAuthoringLocale(
+    payload?.documentLanguage
+    || payload?.navigatorLanguage
+    || fallbackLocale
+  );
+}
+
+function normalizeSelectorAuthoringLocale(input: string | null | undefined): RecorderLocale {
+  const normalized = (input || '').trim().replaceAll('_', '-').toLowerCase();
+  if (!normalized)
+    return 'en';
+  if (normalized === 'ja' || normalized.startsWith('ja-'))
+    return 'ja-JP';
+  if (normalized === 'zh' || normalized === 'zh-cn' || normalized === 'zh-hans' || normalized.startsWith('zh-cn-') || normalized.startsWith('zh-hans') || normalized.startsWith('zh-sg'))
+    return 'zh-CN';
+  if (normalized === 'zh-tw' || normalized === 'zh-hk' || normalized === 'zh-hant' || normalized.startsWith('zh-tw-') || normalized.startsWith('zh-hk-') || normalized.startsWith('zh-hant'))
+    return 'zh-TW';
+  return 'en';
 }
 
 const recorderAppSymbol = Symbol('recorderApp');
