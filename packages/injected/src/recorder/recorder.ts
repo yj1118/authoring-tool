@@ -94,10 +94,7 @@ class InspectTool implements RecorderTool {
     consumeEvent(event);
     if (event.button !== 0)
       return;
-    if (this._assertVisibility && this._hoveredModel?.selector)
-      this._commit(this._hoveredModel.selector, this._hoveredModel);
-    else if (this._hoveredModel?.selector)
-      this._recorder.pickHoveredSelector(this._hoveredModel);
+    this._pickHoveredModel();
   }
 
   onDblClick(event: MouseEvent) {
@@ -110,6 +107,11 @@ class InspectTool implements RecorderTool {
 
   onPointerUp(event: PointerEvent) {
     consumeEvent(event);
+    if (event.button !== 0)
+      return;
+    if (!this._hoveredElement?.matches(':disabled'))
+      return;
+    this._pickHoveredModel();
   }
 
   onMouseDown(event: MouseEvent) {
@@ -167,6 +169,13 @@ class InspectTool implements RecorderTool {
       else
         this._recorder.cancelSelectorPicking();
     }
+  }
+
+  private _pickHoveredModel() {
+    if (this._assertVisibility && this._hoveredModel?.selector)
+      this._commit(this._hoveredModel.selector, this._hoveredModel);
+    else if (this._hoveredModel?.selector)
+      this._recorder.pickHoveredSelector(this._hoveredModel);
   }
 
   onKeyUp(event: KeyboardEvent) {

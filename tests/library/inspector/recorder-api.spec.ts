@@ -166,6 +166,20 @@ test('page.pickLocator should return locator for picked element', async ({ page 
   await expect(locator).toHaveText('Submit');
 });
 
+test('page.pickLocator should return locator for disabled button', async ({ page }) => {
+  await page.setContent(`<button disabled>Submit</button>`);
+
+  const scriptReady = page.waitForEvent('console', msg => msg.text() === 'Recorder script ready for test');
+  const pickPromise = page.pickLocator();
+  await scriptReady;
+
+  const box = await page.getByRole('button', { name: 'Submit' }).boundingBox();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  const locator = await pickPromise;
+  await expect(locator).toBeDisabled();
+});
+
 test('page.cancelPickLocator should cancel ongoing pickLocator', async ({ page }) => {
   const pickPromise = page.pickLocator();
   await Promise.all([
