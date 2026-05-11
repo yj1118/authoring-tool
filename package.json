@@ -121,6 +121,7 @@
     "source-map-support": "0.5.21",
     "ssim.js": "^3.5.0",
     "stoppable": "1.1.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.2",
     "vite": "^6.4.1",
     "ws": "8.17.1",
