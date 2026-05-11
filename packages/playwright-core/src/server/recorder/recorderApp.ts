@@ -416,11 +416,12 @@ export class RecorderApp {
 
   async activate() {
     const inspectedPage = this._inspectedContext?.pages()[0];
+    const browserProcessId = this._inspectedContext?._browser.options.browserProcess.process?.pid;
     await restoreWindowIfMinimized(inspectedPage).catch(() => {});
     if (this._inspectedContext)
       await dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
-    await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle).catch(() => {});
+    await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle, browserProcessId).catch(() => {});
     await inspectedPage?.bringToFront(nullProgress).catch(() => {});
   }
 }

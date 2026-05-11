@@ -35,6 +35,7 @@ type CompanionCommand =
     kind: 'activateWindowByTitlePrefix';
     sessionId: string;
     titlePrefix: string;
+    processId?: number;
   }
   | {
     kind: 'restoreToolWindow';
@@ -168,13 +169,14 @@ export class WindowsTopmostCompanion {
     });
   }
 
-  async activateWindowByTitlePrefix(titlePrefix: string): Promise<void> {
+  async activateWindowByTitlePrefix(titlePrefix: string, processId?: number): Promise<void> {
     if (this._disposed || !titlePrefix.trim())
       return;
     await this._send({
       kind: 'activateWindowByTitlePrefix',
       sessionId: this._sessionId,
       titlePrefix,
+      processId: typeof processId === 'number' && processId > 0 ? processId : undefined,
     });
   }
 
