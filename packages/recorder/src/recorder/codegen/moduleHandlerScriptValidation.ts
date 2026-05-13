@@ -27,6 +27,14 @@ const unsupportedPatterns: UnsupportedPattern[] = [
     pattern: /\b(?:browser|context|page)\.close\s*\(/u,
   },
   {
+    reason: 'file chooser lifecycle',
+    pattern: /\bwaitForEvent\s*\(\s*['"]filechooser['"]\s*\)|\bfileChooser\./u,
+  },
+  {
+    reason: 'local file upload path',
+    pattern: /\bsetInputFiles\s*\(/u,
+  },
+  {
     reason: 'static module import',
     pattern: /^\s*import\s.+from\s+['"][^'"]+['"]/mu,
   },

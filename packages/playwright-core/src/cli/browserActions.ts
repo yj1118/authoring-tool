@@ -27,9 +27,9 @@ import { gracefullyProcessExitDoNotHang } from '@utils/processLauncher';
 import { ManualPromise } from '@isomorphic/manualPromise';
 import { playwright } from '../inprocess';
 import { resolveAuthoringModeConfigFromEnv } from '../server/recorder/authoringMode';
-import { computeSelectorAuthoringInitialBrowserBounds, normalizeSelectorAuthoringScreenMetrics } from '../server/recorder/selectorAuthoringGeometry';
-import { tryActivateExistingAuthoringInstance } from '../server/recorder/selectorAuthoringSingleton';
-import { tryEnsureExistingAuthoringToolWindowVisible } from '../server/recorder/selectorAuthoringWindowRestore';
+import { computeAuthoringInitialBrowserBounds, normalizeAuthoringScreenMetrics } from '../server/recorder/authoringGeometry';
+import { tryActivateExistingAuthoringInstance } from '../server/recorder/authoringSingleton';
+import { tryEnsureExistingAuthoringToolWindowVisible } from '../server/recorder/authoringWindowRestore';
 import type { Browser } from '../client/browser';
 import type { BrowserContext } from '../client/browserContext';
 import type { BrowserType } from '../client/browserType';
@@ -87,7 +87,7 @@ async function launchContext(
   if (!extraOptions.headless)
     contextOptions.deviceScaleFactor = os.platform() === 'darwin' ? 2 : 1;
 
-  // Selector authoring should follow the actual browser window size instead of
+  // Authoring should follow the actual browser window size instead of
   // Playwright's default fixed viewport, otherwise responsive pages can leave
   // unused white space when the window is larger than 1280x720.
   if (useHostViewport && !options.viewportSize && !options.device) {
@@ -247,14 +247,14 @@ async function openPage(context: BrowserContext, url: string | undefined): Promi
   return page;
 }
 
-async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext, page: Page): Promise<void> {
+async function applyAuthoringInitialWindowLayout(context: BrowserContext, page: Page): Promise<void> {
   const session = await context.newCDPSession(page);
   const { windowId, bounds } = await session.send('Browser.getWindowForTarget');
-  const screenMetrics = await getSelectorAuthoringScreenMetrics(page, bounds);
+  const screenMetrics = await getAuthoringScreenMetrics(page, bounds);
   if (!screenMetrics)
     return;
 
-  const browserBounds = computeSelectorAuthoringInitialBrowserBounds(screenMetrics);
+  const browserBounds = computeAuthoringInitialBrowserBounds(screenMetrics);
   if (bounds.windowState && bounds.windowState !== 'normal') {
     await session.send('Browser.setWindowBounds', {
       windowId,
@@ -269,7 +269,7 @@ async function applySelectorAuthoringInitialWindowLayout(context: BrowserContext
   }).catch(() => {});
 }
 
-async function getSelectorAuthoringScreenMetrics(page: Page, windowBounds: { left?: number, top?: number, width?: number, height?: number }) {
+async function getAuthoringScreenMetrics(page: Page, windowBounds: { left?: number, top?: number, width?: number, height?: number }) {
   const payload = await page.evaluate(() => {
     const screenAny = window.screen as Screen & { availLeft?: number; availTop?: number };
     return {
@@ -294,7 +294,7 @@ async function getSelectorAuthoringScreenMetrics(page: Page, windowBounds: { lef
     visualWidth?: number;
     visualHeight?: number;
   } | null;
-  return normalizeSelectorAuthoringScreenMetrics(payload ? {
+  return normalizeAuthoringScreenMetrics(payload ? {
     ...payload,
     nativeLeft: windowBounds.left,
     nativeTop: windowBounds.top,
@@ -325,13 +325,13 @@ export async function codegen(options: Options & { target: string, output?: stri
   });
   const initialPage = authoringModeConfig?.dockWindows && browser.browserType().name() === 'chromium' ? await openPage(context, undefined) : undefined;
   if (initialPage)
-    await applySelectorAuthoringInitialWindowLayout(context, initialPage).catch(() => {});
+    await applyAuthoringInitialWindowLayout(context, initialPage).catch(() => {});
   const donePromise = new ManualPromise<void>();
   maybeSetupTestHooks(browser, closeBrowser, donePromise);
   dotenv.config({ path: 'playwright.env' });
   const recorderContextOptions = { ...contextOptions };
-  // Generated code formatting does not expect `viewport: null`, but selector
-  // authoring uses it to follow the host window size. Omit it for the recorder UI.
+  // Generated code formatting does not expect `viewport: null`, but authoring
+  // uses it to follow the host window size. Omit it for the recorder UI.
   if ((recorderContextOptions as any).viewport === null)
     delete (recorderContextOptions as any).viewport;
   await context._enableRecorder({

@@ -48,11 +48,20 @@ type RecorderAuthoringMessages = {
   clear: string;
   save: string;
   noLaunchContext: string;
+  launchContextTimeout: string;
   noRecordedActionsYet: string;
   recordAtLeastOneActionOrAssertion: string;
   saveFailed: string;
   saved: (recordingId?: string) => string;
   countSummary: (actionCount: number, assertionCount: number) => string;
+  failureAdvice: {
+    retrySave: string;
+    rerecord: string;
+    checkClient: string;
+    checkServer: string;
+    checkStorage: string;
+    checkScript: string;
+  };
   tooltip: {
     record: string;
     stop: string;
@@ -66,6 +75,7 @@ type RecorderAuthoringMessages = {
   };
   status: {
     idle: string;
+    loadingPage: string;
     ready: string;
     recording: string;
     stopped: string;
@@ -113,11 +123,20 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       clear: 'Clear',
       save: 'Save',
       noLaunchContext: 'No launch context',
+      launchContextTimeout: 'Recorder launch context did not arrive in time. Keep the Client running, close this recorder window, and open recording again.',
       noRecordedActionsYet: 'No recorded actions yet',
       recordAtLeastOneActionOrAssertion: 'Record at least one action or assertion before saving.',
       saveFailed: 'Recording save failed.',
       saved: recordingId => `Saved ${recordingId ?? ''}`.trim(),
       countSummary: (actionCount, assertionCount) => `${actionCount} actions, ${assertionCount} assertions`,
+      failureAdvice: {
+        retrySave: 'Retry Save after the temporary issue is resolved.',
+        rerecord: 'Clear and record this step again if the generated script looks wrong.',
+        checkClient: 'Keep the local Client running, then retry Save.',
+        checkServer: 'Check the Web Console or Orchestrator service, then retry Save.',
+        checkStorage: 'Check the recording storage grant or S3/MinIO connectivity, then retry Save.',
+        checkScript: 'Clear and record again; the generated script failed validation.',
+      },
       tooltip: {
         record: 'Record browser actions such as clicks, typing, selections, and navigation.',
         stop: 'Stop recording new browser interactions.',
@@ -131,6 +150,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       status: {
         idle: 'idle',
+        loadingPage: 'loading page',
         ready: 'ready',
         recording: 'recording',
         stopped: 'stopped',
@@ -171,11 +191,20 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       clear: '清空',
       save: '保存',
       noLaunchContext: '没有启动上下文',
+      launchContextTimeout: '录制启动上下文获取超时。请保持本地 Client 正在运行，关闭当前录制窗口后重新打开录制。',
       noRecordedActionsYet: '还没有录制任何操作',
       recordAtLeastOneActionOrAssertion: '保存前请至少录制一个操作或断言。',
       saveFailed: '录制保存失败。',
       saved: recordingId => `已保存 ${recordingId ?? ''}`.trim(),
       countSummary: (actionCount, assertionCount) => `${actionCount} 个操作，${assertionCount} 个断言`,
+      failureAdvice: {
+        retrySave: '临时问题恢复后，请重试保存。',
+        rerecord: '如果生成的脚本看起来不正确，请清空后重新录制这个步骤。',
+        checkClient: '请保持本地 Client 正在运行，然后重试保存。',
+        checkServer: '请检查 Web Console 或 Orchestrator 服务，然后重试保存。',
+        checkStorage: '请检查录制存储授权或 S3/MinIO 连接，然后重试保存。',
+        checkScript: '请清空并重新录制；生成的脚本没有通过校验。',
+      },
       tooltip: {
         record: '录制点击、输入、选择、导航等页面行为。',
         stop: '停止继续录制新的浏览器操作。',
@@ -189,6 +218,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       status: {
         idle: '空闲',
+        loadingPage: '页面加载中',
         ready: '就绪',
         recording: '录制中',
         stopped: '已停止',
@@ -229,11 +259,20 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       clear: '清空',
       save: '儲存',
       noLaunchContext: '沒有啟動上下文',
+      launchContextTimeout: '錄製啟動上下文取得逾時。請保持本機 Client 正在執行，關閉目前錄製視窗後重新開啟錄製。',
       noRecordedActionsYet: '尚未錄製任何操作',
       recordAtLeastOneActionOrAssertion: '儲存前請至少錄製一個操作或斷言。',
       saveFailed: '錄製儲存失敗。',
       saved: recordingId => `已儲存 ${recordingId ?? ''}`.trim(),
       countSummary: (actionCount, assertionCount) => `${actionCount} 個操作，${assertionCount} 個斷言`,
+      failureAdvice: {
+        retrySave: '暫時性問題恢復後，請重試儲存。',
+        rerecord: '如果產生的腳本看起來不正確，請清空後重新錄製這個步驟。',
+        checkClient: '請保持本機 Client 正在執行，然後重試儲存。',
+        checkServer: '請檢查 Web Console 或 Orchestrator 服務，然後重試儲存。',
+        checkStorage: '請檢查錄製儲存授權或 S3/MinIO 連線，然後重試儲存。',
+        checkScript: '請清空並重新錄製；產生的腳本未通過校驗。',
+      },
       tooltip: {
         record: '錄製點擊、輸入、選擇、導覽等頁面行為。',
         stop: '停止繼續錄製新的瀏覽器操作。',
@@ -247,6 +286,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       status: {
         idle: '閒置',
+        loadingPage: '頁面載入中',
         ready: '就緒',
         recording: '錄製中',
         stopped: '已停止',
@@ -287,11 +327,20 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       clear: 'クリア',
       save: '保存',
       noLaunchContext: '起動コンテキストがありません',
+      launchContextTimeout: '録画の起動コンテキストを時間内に取得できませんでした。ローカル Client を起動したまま、この録画ウィンドウを閉じてもう一度開いてください。',
       noRecordedActionsYet: '録画された操作はまだありません',
       recordAtLeastOneActionOrAssertion: '保存する前に、操作またはアサーションを少なくとも1つ録画してください。',
       saveFailed: '録画の保存に失敗しました。',
       saved: recordingId => `保存済み ${recordingId ?? ''}`.trim(),
       countSummary: (actionCount, assertionCount) => `${actionCount} 件の操作、${assertionCount} 件のアサーション`,
+      failureAdvice: {
+        retrySave: '一時的な問題が解消したら、保存を再試行してください。',
+        rerecord: '生成されたスクリプトが正しくなさそうな場合は、クリアしてこのステップを録画し直してください。',
+        checkClient: 'ローカル Client を起動したまま、保存を再試行してください。',
+        checkServer: 'Web Console または Orchestrator サービスを確認してから、保存を再試行してください。',
+        checkStorage: '録画ストレージ権限または S3/MinIO 接続を確認してから、保存を再試行してください。',
+        checkScript: 'クリアして録画し直してください。生成されたスクリプトが検証に失敗しました。',
+      },
       tooltip: {
         record: 'クリック、入力、選択、ナビゲーションなどのページ操作を録画します。',
         stop: '新しいブラウザー操作の録画を停止します。',
@@ -305,6 +354,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       status: {
         idle: '待機中',
+        loadingPage: 'ページ読み込み中',
         ready: '準備完了',
         recording: '録画中',
         stopped: '停止済み',

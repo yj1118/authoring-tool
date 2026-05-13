@@ -31,9 +31,9 @@ import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
 import { CRPage } from '../chromium/crPage';
 import { resolveAuthoringLocaleFromEnv, resolveAuthoringModeConfigFromEnv, type AuthoringModeConfig } from './authoringMode';
-import { computeSelectorAuthoringDockLayout as computeSelectorAuthoringDockLayoutFromMetrics, normalizeSelectorAuthoringScreenMetrics } from './selectorAuthoringGeometry';
+import { computeAuthoringDockLayout as computeAuthoringDockLayoutFromMetrics, normalizeAuthoringScreenMetrics } from './authoringGeometry';
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
-import { AuthoringSingleton } from './selectorAuthoringSingleton';
+import { AuthoringSingleton } from './authoringSingleton';
 import { getRecordingLaunchContext, saveRecordingThroughClient } from './recordingAuthoringPersistence';
 
 import type { Page } from '../page';
@@ -137,7 +137,7 @@ export class RecorderApp {
 
     const url = this._recorder.url();
     this._frontend.localeChanged({
-      locale: await resolveSelectorAuthoringLocale(
+      locale: await resolveAuthoringLocale(
           resolveAuthoringLocaleFromEnv(),
           inspectedContext,
           this._languageGeneratorOptions.contextOptions.locale,
@@ -240,7 +240,7 @@ export class RecorderApp {
     const isChromium = inspectedContext._browser.options.browserType === 'chromium';
     const headed = !!inspectedContext._browser.options.headful;
     const authoringModeConfig = resolveAuthoringModeConfigFromEnv();
-    const initialDockLayout = authoringModeConfig?.dockWindows ? await computeSelectorAuthoringDockLayoutForPage(inspectedContext.pages()[0]).catch(() => null) : null;
+    const initialDockLayout = authoringModeConfig?.dockWindows ? await computeAuthoringDockLayoutForPage(inspectedContext.pages()[0]).catch(() => null) : null;
     const { createPlaywright } = require('../playwright') as typeof import('../playwright');
     const recorderPlaywright = createPlaywright({ sdkLanguage: 'javascript', isInternalPlaywright: true });
     const { context: appContext, page } = await launchApp(recorderPlaywright.chromium, {
@@ -291,7 +291,7 @@ export class RecorderApp {
         return null;
       });
       if (authoringModeConfig.dockWindows)
-        await dockSelectorAuthoringWindows(inspectedContext, page);
+        await dockAuthoringWindows(inspectedContext, page);
       const attachResult = await WindowsTopmostCompanion.attachIfNeeded(inspectedContext, page, authoringModeConfig.mode);
       recorderApp._windowsTopmostCompanion = attachResult.companion;
       if (attachResult.error) {
@@ -319,7 +319,7 @@ export class RecorderApp {
     recorder.on(RecorderEvent.PageNavigated, (url: string) => {
       this._frontend.pageNavigated({ url });
       if (this._authoringModeConfig?.dockWindows && this._inspectedContext)
-        void dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
+        void dockAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     });
 
     recorder.on(RecorderEvent.ContextClosed, () => {
@@ -432,7 +432,7 @@ export class RecorderApp {
     const browserProcessId = this._inspectedContext?._browser.options.browserProcess.process?.pid;
     await restoreWindowIfMinimized(inspectedPage).catch(() => {});
     if (this._authoringModeConfig?.dockWindows && this._inspectedContext)
-      await dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
+      await dockAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
     await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle, browserProcessId).catch(() => {});
     await inspectedPage?.bringToFront(nullProgress).catch(() => {});
@@ -500,13 +500,13 @@ function createRecorderFrontend(page: Page): RecorderFrontend {
   });
 }
 
-async function resolveSelectorAuthoringLocale(explicitLocale: string | undefined, inspectedContext: BrowserContext, fallbackLocale: string | undefined): Promise<RecorderLocale> {
+async function resolveAuthoringLocale(explicitLocale: string | undefined, inspectedContext: BrowserContext, fallbackLocale: string | undefined): Promise<RecorderLocale> {
   if ((explicitLocale || '').trim())
-    return normalizeSelectorAuthoringLocale(explicitLocale);
+    return normalizeAuthoringLocale(explicitLocale);
 
   const inspectedPage = inspectedContext.pages()[0];
   if (!inspectedPage)
-    return normalizeSelectorAuthoringLocale(fallbackLocale);
+    return normalizeAuthoringLocale(fallbackLocale);
 
   const payload = await inspectedPage.mainFrame().evaluateExpression(nullProgress, String(() => {
     return {
@@ -515,14 +515,14 @@ async function resolveSelectorAuthoringLocale(explicitLocale: string | undefined
     };
   }), { isFunction: true, world: 'utility' }).catch(() => null) as { documentLanguage?: string; navigatorLanguage?: string } | null;
 
-  return normalizeSelectorAuthoringLocale(
+  return normalizeAuthoringLocale(
       payload?.documentLanguage
       || payload?.navigatorLanguage
       || fallbackLocale
   );
 }
 
-function normalizeSelectorAuthoringLocale(input: string | null | undefined): RecorderLocale {
+function normalizeAuthoringLocale(input: string | null | undefined): RecorderLocale {
   const normalized = (input || '').trim().replaceAll('_', '-').toLowerCase();
   if (!normalized)
     return 'en';
@@ -544,7 +544,7 @@ type DockableWindowBounds = {
   height?: number;
 };
 
-async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, toolPage: Page): Promise<void> {
+async function dockAuthoringWindows(inspectedContext: BrowserContext, toolPage: Page): Promise<void> {
   if (inspectedContext._browser.options.browserType !== 'chromium')
     return;
 
@@ -557,7 +557,7 @@ async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, to
     restoreWindowIfMinimized(toolPage),
   ]).catch(() => {});
 
-  const dockLayout = await computeSelectorAuthoringDockLayoutForPage(inspectedPage).catch(() => null);
+  const dockLayout = await computeAuthoringDockLayoutForPage(inspectedPage).catch(() => null);
   if (!dockLayout)
     return;
 
@@ -570,17 +570,17 @@ async function dockSelectorAuthoringWindows(inspectedContext: BrowserContext, to
   await inspectedPage.bringToFront(nullProgress).catch(() => {});
 }
 
-async function computeSelectorAuthoringDockLayoutForPage(inspectedPage: Page | undefined) {
+async function computeAuthoringDockLayoutForPage(inspectedPage: Page | undefined) {
   if (!inspectedPage)
     return null;
 
-  const screenMetrics = await getSelectorAuthoringScreenMetrics(inspectedPage).catch(() => null);
+  const screenMetrics = await getAuthoringScreenMetrics(inspectedPage).catch(() => null);
   if (!screenMetrics)
     return null;
-  return computeSelectorAuthoringDockLayoutFromMetrics(screenMetrics);
+  return computeAuthoringDockLayoutFromMetrics(screenMetrics);
 }
 
-async function getSelectorAuthoringScreenMetrics(page: Page) {
+async function getAuthoringScreenMetrics(page: Page) {
   const [windowBounds, payload] = await Promise.all([
     getWindowBounds(page).catch(() => null),
     page.mainFrame().evaluateExpression(nullProgress, String(() => {
@@ -609,7 +609,7 @@ async function getSelectorAuthoringScreenMetrics(page: Page) {
     } | null,
   ]);
 
-  return normalizeSelectorAuthoringScreenMetrics(payload ? {
+  return normalizeAuthoringScreenMetrics(payload ? {
     left: payload.availLeft,
     top: payload.availTop,
     width: payload.availWidth,

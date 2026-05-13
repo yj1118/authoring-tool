@@ -129,6 +129,7 @@ export type RecordingSaveRequest = {
   assertionCount: number;
   sourceId: string;
   startUrl?: string;
+  finalUrl?: string;
   timeoutMs?: number;
 };
 

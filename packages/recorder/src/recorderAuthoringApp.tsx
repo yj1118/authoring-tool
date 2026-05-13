@@ -14,44 +14,37 @@
   limitations under the License.
 */
 
-import type { CallLog, Mode, RecordingLaunchContext, RecordingSaveResult, RecorderBackend, RecorderFrontend, RecorderLocale, Source } from './recorderTypes';
+import type { CallLog, Mode, RecordingLaunchContext, RecorderBackend, RecorderFrontend, RecorderLocale, Source } from './recorderTypes';
 import * as React from 'react';
 import './recorder.css';
 import { createRecorderBackend } from './recorderBackend';
 import { getRecorderAuthoringMessages, normalizeRecorderLocale } from './messages';
 import { generateModuleHandlerScriptFromSources } from './recorder/codegen/moduleHandlerScript';
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from './recorder/errors/recordingErrors';
+import {
+  failedStatus,
+  isRecorderCaptureMode,
+  isSavingStatus,
+  launchReadyStatus,
+  launchStartedStatus,
+  modeChangedStatus,
+  pageNavigatedStatus,
+  type RecorderStatus,
+  type RecorderStatusKey,
+} from './recorder/state/recorderStatus';
 
-type RecorderStatus =
-  | { kind: 'idle' }
-  | { kind: 'ready' }
-  | { kind: 'recording' }
-  | { kind: 'stopped' }
-  | { kind: 'generating' }
-  | { kind: 'uploading' }
-  | { kind: 'committing' }
-  | { kind: 'saved'; result: RecordingSaveResult }
-  | { kind: 'failed'; reasonCode: string; message: string };
+const launchContextTimeoutMs = 8000;
 
-type RecorderStatusKey = Exclude<RecorderStatus['kind'], 'saved' | 'failed'>;
-type RecorderCaptureMode = 'recording' | 'assertingVisibility' | 'assertingText' | 'assertingValue' | 'assertingSnapshot';
 type ActionPreviewEntry = {
   key: string;
   text: string;
 };
 
-function isRecorderCaptureMode(mode: Mode): mode is RecorderCaptureMode {
-  return mode === 'recording'
-    || mode === 'assertingVisibility'
-    || mode === 'assertingText'
-    || mode === 'assertingValue'
-    || mode === 'assertingSnapshot';
-}
-
 export const RecorderAuthoringApp: React.FC = () => {
   const backend = React.useMemo(createRecorderBackend, []);
   const [locale, setLocale] = React.useState<RecorderLocale>(() => normalizeRecorderLocale(window.navigator.language));
   const i18n = React.useMemo(() => getRecorderAuthoringMessages(locale), [locale]);
+  const launchContextTimeoutMessageRef = React.useRef(i18n.launchContextTimeout);
   const [mode, setMode] = React.useState<Mode>('none');
   const [sources, setSources] = React.useState<Source[]>([]);
   const [deletedActionKeys, setDeletedActionKeys] = React.useState<Set<string>>(() => new Set());
@@ -63,32 +56,32 @@ export const RecorderAuthoringApp: React.FC = () => {
     document.title = pageUrl ? `${i18n.windowTitle} - ${pageUrl}` : i18n.windowTitle;
   }, [i18n.windowTitle, pageUrl]);
 
+  React.useEffect(() => {
+    launchContextTimeoutMessageRef.current = i18n.launchContextTimeout;
+  }, [i18n.launchContextTimeout]);
+
   React.useLayoutEffect(() => {
     const dispatcher: RecorderFrontend = {
       localeChanged: ({ locale }) => setLocale(locale),
       modeChanged: ({ mode }) => {
         setMode(mode);
-        if (isRecorderCaptureMode(mode))
-          setStatus({ kind: 'recording' });
-        else if (mode === 'standby' || mode === 'none')
-          setStatus(current => current.kind === 'recording' ? { kind: 'stopped' } : current);
+        setStatus(current => modeChangedStatus(current, mode));
       },
       sourcesUpdated: ({ sources }) => {
         setSources(sources);
         window.playwrightSourcesEchoForTest = sources;
       },
-      pageNavigated: ({ url }) => setPageUrl(url),
+      pageNavigated: ({ url }) => {
+        setPageUrl(url);
+        setStatus(current => pageNavigatedStatus(current));
+      },
       pauseStateChanged: () => {},
       callLogsUpdated: (_params: { callLogs: CallLog[] }) => {},
       sourceRevealRequested: () => {},
       elementPicked: () => {},
       selectorAuthoringDiagnosticChanged: ({ diagnostic }) => {
         if (diagnostic?.severity === 'error') {
-          setStatus({
-            kind: 'failed',
-            reasonCode: recordingReasonCodes.pageLoadFailed,
-            message: diagnostic.message,
-          });
+          setStatus(failedStatus(recordingReasonCodes.pageLoadFailed, diagnostic.message));
         }
       },
     };
@@ -98,13 +91,26 @@ export const RecorderAuthoringApp: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
-    backend.getRecordingLaunchContext().then(context => {
+    let disposed = false;
+    setStatus(current => launchStartedStatus(current));
+    rejectAfter(
+        backend.getRecordingLaunchContext(),
+        launchContextTimeoutMs,
+        launchContextTimeoutMessageRef.current,
+    ).then(context => {
+      if (disposed)
+        return;
       setLaunchContext(context);
-      setStatus({ kind: 'ready' });
+      setStatus(current => launchReadyStatus(current));
     }).catch(error => {
+      if (disposed)
+        return;
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.launchFailed);
-      setStatus({ kind: 'failed', reasonCode: normalized.reasonCode, message: normalized.message });
+      setStatus(failedStatus(normalized.reasonCode, normalized.message));
     });
+    return () => {
+      disposed = true;
+    };
   }, [backend]);
 
   const editableSources = React.useMemo(() => applyDeletedActionKeys(sources, deletedActionKeys), [deletedActionKeys, sources]);
@@ -126,7 +132,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     }
   }, [editableSources]);
 
-  const canSave = generatedSummary.ok && status.kind !== 'generating' && status.kind !== 'uploading' && status.kind !== 'committing';
+  const canSave = generatedSummary.ok && !isSavingStatus(status);
   const previewActions = React.useMemo(() => choosePreviewActions(sources, deletedActionKeys), [deletedActionKeys, sources]);
   const generatedSummaryMessage = generatedSummary.ok
     ? i18n.countSummary(generatedSummary.actionCount, generatedSummary.assertionCount)
@@ -140,7 +146,7 @@ export const RecorderAuthoringApp: React.FC = () => {
           error,
           isRecorderCaptureMode(nextMode) ? recordingReasonCodes.recordStartFailed : recordingReasonCodes.recordStopFailed,
       );
-      setStatus({ kind: 'failed', reasonCode: normalized.reasonCode, message: normalized.message });
+      setStatus(failedStatus(normalized.reasonCode, normalized.message));
     });
   }, [backend]);
 
@@ -159,7 +165,7 @@ export const RecorderAuthoringApp: React.FC = () => {
       setStatus({ kind: 'idle' });
     }).catch(error => {
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed);
-      setStatus({ kind: 'failed', reasonCode: normalized.reasonCode, message: normalized.message });
+      setStatus(failedStatus(normalized.reasonCode, normalized.message));
     });
   }, [backend]);
 
@@ -182,6 +188,7 @@ export const RecorderAuthoringApp: React.FC = () => {
         assertionCount: generated.assertionCount,
         sourceId: generated.sourceId,
         startUrl: launchContext?.startUrl ?? pageUrl,
+        finalUrl: pageUrl,
         timeoutMs: generated.timeoutMs,
       });
       setStatus({ kind: 'committing' });
@@ -190,7 +197,7 @@ export const RecorderAuthoringApp: React.FC = () => {
       setStatus({ kind: 'saved', result });
     } catch (error) {
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.uploadFailed);
-      setStatus({ kind: 'failed', reasonCode: normalized.reasonCode, message: normalized.message });
+      setStatus(failedStatus(normalized.reasonCode, normalized.message));
     }
   }, [backend, editableSources, i18n.saveFailed, launchContext?.startUrl, pageUrl]);
 
@@ -199,6 +206,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     : status.kind === 'failed'
       ? `${status.reasonCode}: ${status.message}`
       : i18n.status[status.kind as RecorderStatusKey];
+  const failureAdvice = status.kind === 'failed' ? buildFailureAdvice(status.reasonCode, status.message, i18n) : null;
 
   return <div className='recorder'>
     <div className='recorder-authoring-main'>
@@ -223,6 +231,7 @@ export const RecorderAuthoringApp: React.FC = () => {
         <span>{statusLabel}</span>
         <span>{launchContext ? `${launchContext.caseId} / ${launchContext.stepId}` : i18n.noLaunchContext}</span>
         <span>{generatedSummaryMessage}</span>
+        {failureAdvice ? <span className='recorder-authoring-status-advice'>{failureAdvice}</span> : null}
       </div>
 
       <div className='recorder-authoring-source-panel'>
@@ -253,6 +262,33 @@ export const RecorderAuthoringApp: React.FC = () => {
     </div>
   </div>;
 };
+
+function buildFailureAdvice(reasonCode: string, message: string, i18n: ReturnType<typeof getRecorderAuthoringMessages>): string {
+  const normalizedReason = reasonCode.toLowerCase();
+  const normalizedMessage = message.toLowerCase();
+  if (normalizedReason.includes('script_validation') || normalizedReason.includes('codegen'))
+    return `${i18n.failureAdvice.checkScript} ${i18n.failureAdvice.rerecord}`;
+  if (normalizedReason.includes('upload_grant') || normalizedMessage.includes('s3') || normalizedMessage.includes('minio'))
+    return `${i18n.failureAdvice.checkStorage} ${i18n.failureAdvice.retrySave}`;
+  if (normalizedReason.includes('commit'))
+    return `${i18n.failureAdvice.checkServer} ${i18n.failureAdvice.retrySave}`;
+  if (normalizedReason.includes('launch') || normalizedReason.includes('page_load') || normalizedMessage.includes('client'))
+    return `${i18n.failureAdvice.checkClient} ${i18n.failureAdvice.retrySave}`;
+  if (normalizedReason.includes('upload'))
+    return `${i18n.failureAdvice.checkStorage} ${i18n.failureAdvice.retrySave}`;
+  return i18n.failureAdvice.retrySave;
+}
+
+function rejectAfter<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((_resolve, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId)
+      clearTimeout(timeoutId);
+  });
+}
 
 function chooseRecordedSource(sources: Source[]): Source | undefined {
   return sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')

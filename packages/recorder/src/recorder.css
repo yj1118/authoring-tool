@@ -255,6 +255,13 @@
   white-space: nowrap;
 }
 
+.recorder-authoring-status-advice {
+  grid-column: 1 / -1;
+  color: var(--sa-danger);
+  white-space: normal !important;
+  line-height: 1.5;
+}
+
 .recorder-authoring-source-panel {
   flex: 1 1 auto;
   min-height: 0;

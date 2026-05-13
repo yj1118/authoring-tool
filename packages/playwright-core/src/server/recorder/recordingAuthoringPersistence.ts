@@ -150,6 +150,7 @@ export async function saveRecordingThroughClient(request: RecordingSaveRequest):
         recordingBridgeBaseUrl: launchContext.recordingBridgeBaseUrl,
         recordingBridgeToken: launchContext.recordingBridgeToken,
         startUrl: request.startUrl ?? launchContext.startUrl,
+        finalUrl: request.finalUrl,
         scriptText: request.scriptText,
         actionCount: request.actionCount,
         assertionCount: request.assertionCount,
