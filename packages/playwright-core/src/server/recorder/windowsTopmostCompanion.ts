@@ -20,6 +20,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 
 import { BrowserContext } from '../browserContext';
+import { resolveAuthoringModeConfig, type AuthoringMode } from './authoringMode';
 
 import type { Page } from '../page';
 import type { ChildProcessWithoutNullStreams } from 'child_process';
@@ -64,7 +65,6 @@ type CompanionResponse = {
 
 const kCompanionPathEnv = 'TEST_BOT_WINDOWS_TOPMOST_COMPANION_PATH';
 const kLegacyCompanionScriptEnv = 'TEST_BOT_WINDOWS_TOPMOST_COMPANION_SCRIPT';
-const kSelectorAuthoringToolTitlePrefix = 'Selector Authoring Tool';
 const kAttachRetryCount = 5;
 const kAttachRetryDelayMs = 150;
 
@@ -114,19 +114,20 @@ export class WindowsTopmostCompanion {
     });
   }
 
-  static async attachIfNeeded(inspectedContext: BrowserContext, toolPage: Page): Promise<WindowsTopmostCompanionAttachResult> {
+  static async attachIfNeeded(inspectedContext: BrowserContext, toolPage: Page, mode: AuthoringMode = 'selector'): Promise<WindowsTopmostCompanionAttachResult> {
     const companionPath = process.env[kCompanionPathEnv]?.trim() || process.env[kLegacyCompanionScriptEnv]?.trim();
     if (process.platform !== 'win32' || !companionPath || !fs.existsSync(companionPath))
       return { companion: null };
+    const config = resolveAuthoringModeConfig(mode);
 
     const toolPid = toolPage.browserContext._browser.options.browserProcess.process?.pid;
     if (!toolPid)
       return { companion: null, error: new Error('Windows topmost companion could not attach because toolPid is missing') };
 
-    const companion = new WindowsTopmostCompanion(companionPath, `selector-authoring-${inspectedContext.guid}`);
+    const companion = new WindowsTopmostCompanion(companionPath, `${config.sessionIdPrefix}-${inspectedContext.guid}`);
     try {
       await companion._waitForSpawn();
-      await companion._attachSession(toolPid);
+      await companion._attachSession(toolPid, config.toolTitlePrefix);
       await companion._send({
         kind: 'setToolTopmost',
         sessionId: companion._sessionId,
@@ -194,7 +195,7 @@ export class WindowsTopmostCompanion {
     await this._spawnedPromise;
   }
 
-  private async _attachSession(toolPid: number): Promise<void> {
+  private async _attachSession(toolPid: number, toolTitlePrefix: string): Promise<void> {
     let lastError: Error | undefined;
     for (let attempt = 0; attempt < kAttachRetryCount; ++attempt) {
       try {
@@ -202,7 +203,7 @@ export class WindowsTopmostCompanion {
           kind: 'attachSession',
           sessionId: this._sessionId,
           toolPid,
-          toolTitlePrefix: kSelectorAuthoringToolTitlePrefix,
+          toolTitlePrefix,
         });
         return;
       } catch (error) {
@@ -280,4 +281,3 @@ function resolveCompanionLaunch(companionPath: string): { command: string, args:
     ],
   };
 }
-

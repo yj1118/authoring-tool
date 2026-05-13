@@ -30,9 +30,10 @@ import { generateCode } from '../codegen/language';
 import { Recorder, RecorderEvent } from '../recorder';
 import { BrowserContext } from '../browserContext';
 import { CRPage } from '../chromium/crPage';
+import { resolveAuthoringLocaleFromEnv, resolveAuthoringModeConfigFromEnv, type AuthoringModeConfig } from './authoringMode';
 import { computeSelectorAuthoringDockLayout as computeSelectorAuthoringDockLayoutFromMetrics, normalizeSelectorAuthoringScreenMetrics } from './selectorAuthoringGeometry';
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
-import { SelectorAuthoringSingleton } from './selectorAuthoringSingleton';
+import { AuthoringSingleton } from './selectorAuthoringSingleton';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
@@ -63,10 +64,10 @@ export class RecorderApp {
   private _selectedGeneratorId: string;
   private _frontend: RecorderFrontend;
   private _windowsTopmostCompanion: WindowsTopmostCompanion | null = null;
-  private _selectorAuthoringSingleton: SelectorAuthoringSingleton | null = null;
+  private _authoringSingleton: AuthoringSingleton | null = null;
   private _inspectedContext: BrowserContext | null = null;
 
-  private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined) {
+  private constructor(recorder: Recorder, params: RecorderAppParams, page: Page, wsEndpointForTest: string | undefined, private readonly _authoringModeConfig: AuthoringModeConfig | null) {
     this._page = page;
     this._recorder = recorder;
     this._frontend = createRecorderFrontend(page);
@@ -119,21 +120,24 @@ export class RecorderApp {
       await this._createDispatcher(progress, inspectedContext);
 
       this._page.once('close', () => {
-        void this._releaseSelectorAuthoringSingleton();
+        void this._releaseAuthoringSingleton();
         void this._releaseWindowsTopmostCompanion();
         this._recorder.close();
-        inspectedContext.close(nullProgress, { reason: 'Selector authoring window closed' }).catch(() => {});
+        inspectedContext.close(nullProgress, { reason: `${this._authoringModeConfig?.mode ?? 'Recorder'} authoring window closed` }).catch(() => {});
         this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
         delete (inspectedContext as any)[recorderAppSymbol];
       });
 
-      await this._page.mainFrame().goto(progress, 'https://playwright/index.html');
+      const appUrl = this._authoringModeConfig
+        ? `https://playwright/index.html#authoringMode=${this._authoringModeConfig.mode}`
+        : 'https://playwright/index.html';
+      await this._page.mainFrame().goto(progress, appUrl);
     });
 
     const url = this._recorder.url();
     this._frontend.localeChanged({
       locale: await resolveSelectorAuthoringLocale(
-          process.env.TEST_BOT_SELECTOR_AUTHORING_UI_LOCALE,
+          resolveAuthoringLocaleFromEnv(),
           inspectedContext,
           this._languageGeneratorOptions.contextOptions.locale,
       ),
@@ -210,7 +214,7 @@ export class RecorderApp {
   }
 
   async close() {
-    await this._releaseSelectorAuthoringSingleton();
+    await this._releaseAuthoringSingleton();
     await this._releaseWindowsTopmostCompanion();
     await this._page.close(nullProgress);
   }
@@ -228,7 +232,8 @@ export class RecorderApp {
     const sdkLanguage = inspectedContext._browser.sdkLanguage();
     const isChromium = inspectedContext._browser.options.browserType === 'chromium';
     const headed = !!inspectedContext._browser.options.headful;
-    const initialDockLayout = params.hideToolbar ? await computeSelectorAuthoringDockLayoutForPage(inspectedContext.pages()[0]).catch(() => null) : null;
+    const authoringModeConfig = resolveAuthoringModeConfigFromEnv();
+    const initialDockLayout = authoringModeConfig?.dockWindows ? await computeSelectorAuthoringDockLayoutForPage(inspectedContext.pages()[0]).catch(() => null) : null;
     const { createPlaywright } = require('../playwright') as typeof import('../playwright');
     const recorderPlaywright = createPlaywright({ sdkLanguage: 'javascript', isInternalPlaywright: true });
     const { context: appContext, page } = await launchApp(recorderPlaywright.chromium, {
@@ -269,24 +274,25 @@ export class RecorderApp {
       ...params,
     };
 
-    const recorderApp = new RecorderApp(recorder, appParams, page, appContext._browser.options.wsEndpoint);
+    const recorderApp = new RecorderApp(recorder, appParams, page, appContext._browser.options.wsEndpoint, authoringModeConfig);
     await recorderApp._init(inspectedContext);
-    if (params.hideToolbar) {
-      recorderApp._selectorAuthoringSingleton = await SelectorAuthoringSingleton.start(async () => {
+    if (authoringModeConfig) {
+      recorderApp._authoringSingleton = await AuthoringSingleton.start(authoringModeConfig.mode, async () => {
         await recorderApp.activate();
       }).catch(error => {
-        console.warn(`[selector-authoring] Failed to start singleton server: ${error instanceof Error ? error.message : String(error)}`); // eslint-disable-line no-console
+        console.warn(`[${authoringModeConfig.sessionIdPrefix}] Failed to start singleton server: ${error instanceof Error ? error.message : String(error)}`); // eslint-disable-line no-console
         return null;
       });
-      await dockSelectorAuthoringWindows(inspectedContext, page);
-      const attachResult = await WindowsTopmostCompanion.attachIfNeeded(inspectedContext, page);
+      if (authoringModeConfig.dockWindows)
+        await dockSelectorAuthoringWindows(inspectedContext, page);
+      const attachResult = await WindowsTopmostCompanion.attachIfNeeded(inspectedContext, page, authoringModeConfig.mode);
       recorderApp._windowsTopmostCompanion = attachResult.companion;
       if (attachResult.error) {
-        console.warn(`[selector-authoring] ${attachResult.error.message}`); // eslint-disable-line no-console
+        console.warn(`[${authoringModeConfig.sessionIdPrefix}] ${attachResult.error.message}`); // eslint-disable-line no-console
         recorderApp._frontend.selectorAuthoringDiagnosticChanged({
           diagnostic: {
             severity: 'warning',
-            message: `Windows topmost companion was unavailable, so selector authoring is using the standard docked layout without always-on-top behavior. ${attachResult.error.message}`,
+            message: `Windows topmost companion was unavailable, so ${authoringModeConfig.mode} authoring is using the standard layout without always-on-top behavior. ${attachResult.error.message}`,
           },
         });
       }
@@ -305,12 +311,12 @@ export class RecorderApp {
 
     recorder.on(RecorderEvent.PageNavigated, (url: string) => {
       this._frontend.pageNavigated({ url });
-      if (this._inspectedContext)
+      if (this._authoringModeConfig?.dockWindows && this._inspectedContext)
         void dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     });
 
     recorder.on(RecorderEvent.ContextClosed, () => {
-      void this._releaseSelectorAuthoringSingleton();
+      void this._releaseAuthoringSingleton();
       void this._releaseWindowsTopmostCompanion();
       this._throttledOutputFile?.flush();
       this._page.browserContext.close(nullProgress, { reason: 'Recorder window closed' }).catch(() => {});
@@ -408,9 +414,9 @@ export class RecorderApp {
     await companion?.restoreAndRelease();
   }
 
-  private async _releaseSelectorAuthoringSingleton() {
-    const singleton = this._selectorAuthoringSingleton;
-    this._selectorAuthoringSingleton = null;
+  private async _releaseAuthoringSingleton() {
+    const singleton = this._authoringSingleton;
+    this._authoringSingleton = null;
     await singleton?.close().catch(() => {});
   }
 
@@ -418,7 +424,7 @@ export class RecorderApp {
     const inspectedPage = this._inspectedContext?.pages()[0];
     const browserProcessId = this._inspectedContext?._browser.options.browserProcess.process?.pid;
     await restoreWindowIfMinimized(inspectedPage).catch(() => {});
-    if (this._inspectedContext)
+    if (this._authoringModeConfig?.dockWindows && this._inspectedContext)
       await dockSelectorAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
     const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
     await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle, browserProcessId).catch(() => {});

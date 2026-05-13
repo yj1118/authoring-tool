@@ -26,9 +26,10 @@ import { program } from 'commander';
 import { gracefullyProcessExitDoNotHang } from '@utils/processLauncher';
 import { ManualPromise } from '@isomorphic/manualPromise';
 import { playwright } from '../inprocess';
+import { resolveAuthoringModeConfigFromEnv } from '../server/recorder/authoringMode';
 import { computeSelectorAuthoringInitialBrowserBounds, normalizeSelectorAuthoringScreenMetrics } from '../server/recorder/selectorAuthoringGeometry';
-import { tryActivateExistingSelectorAuthoringInstance } from '../server/recorder/selectorAuthoringSingleton';
-import { tryEnsureExistingSelectorAuthoringToolWindowVisible } from '../server/recorder/selectorAuthoringWindowRestore';
+import { tryActivateExistingAuthoringInstance } from '../server/recorder/selectorAuthoringSingleton';
+import { tryEnsureExistingAuthoringToolWindowVisible } from '../server/recorder/selectorAuthoringWindowRestore';
 import type { Browser } from '../client/browser';
 import type { BrowserContext } from '../client/browserContext';
 import type { BrowserType } from '../client/browserType';
@@ -310,9 +311,9 @@ export async function open(options: Options, url: string | undefined) {
 
 export async function codegen(options: Options & { target: string, output?: string, testIdAttribute?: string }, url: string | undefined) {
   const { target: language, output: outputFile, testIdAttribute: testIdAttributeName } = options;
-  const isSelectorAuthoring = process.env.TEST_BOT_SELECTOR_AUTHORING_ENABLED === '1';
-  if (isSelectorAuthoring && await tryActivateExistingSelectorAuthoringInstance()) {
-    await tryEnsureExistingSelectorAuthoringToolWindowVisible().catch(() => false);
+  const authoringModeConfig = resolveAuthoringModeConfigFromEnv();
+  if (authoringModeConfig && await tryActivateExistingAuthoringInstance(authoringModeConfig.mode)) {
+    await tryEnsureExistingAuthoringToolWindowVisible(authoringModeConfig.mode).catch(() => false);
     return;
   }
   const tracesDir = path.join(os.tmpdir(), `playwright-recorder-trace-${Date.now()}`);
@@ -322,7 +323,7 @@ export async function codegen(options: Options & { target: string, output?: stri
     tracesDir,
     useHostViewport: true,
   });
-  const initialPage = isSelectorAuthoring && browser.browserType().name() === 'chromium' ? await openPage(context, undefined) : undefined;
+  const initialPage = authoringModeConfig?.dockWindows && browser.browserType().name() === 'chromium' ? await openPage(context, undefined) : undefined;
   if (initialPage)
     await applySelectorAuthoringInitialWindowLayout(context, initialPage).catch(() => {});
   const donePromise = new ManualPromise<void>();
@@ -343,8 +344,8 @@ export async function codegen(options: Options & { target: string, output?: stri
     testIdAttributeName,
     outputFile: outputFile ? path.resolve(outputFile) : undefined,
     handleSIGINT: false,
-    hideInspector: !isSelectorAuthoring,
-    hideToolbar: isSelectorAuthoring,
+    hideInspector: !authoringModeConfig,
+    hideToolbar: !!authoringModeConfig,
   });
   await openPage(context, url);
   donePromise.resolve();
@@ -457,4 +458,3 @@ function validateOptions(options: Options) {
   if (options.colorScheme && !['light', 'dark'].includes(options.colorScheme))
     throw new Error('Invalid color scheme, should be one of "light", "dark"');
 }
-

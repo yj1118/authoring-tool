@@ -17,6 +17,7 @@
 import readline from 'readline';
 import { spawn } from 'child_process';
 import path from 'path';
+import { resolveAuthoringModeConfig, type AuthoringMode } from './authoringMode';
 
 type CompanionResponse = {
   ok?: boolean;
@@ -25,11 +26,11 @@ type CompanionResponse = {
 
 const kCompanionPathEnv = 'TEST_BOT_WINDOWS_TOPMOST_COMPANION_PATH';
 const kLegacyCompanionScriptEnv = 'TEST_BOT_WINDOWS_TOPMOST_COMPANION_SCRIPT';
-const kSelectorAuthoringToolTitlePrefix = 'Selector Authoring Tool';
 
-export async function tryEnsureExistingSelectorAuthoringToolWindowVisible(): Promise<boolean> {
+export async function tryEnsureExistingAuthoringToolWindowVisible(mode: AuthoringMode): Promise<boolean> {
   if (process.platform !== 'win32')
     return false;
+  const config = resolveAuthoringModeConfig(mode);
 
   const companionPath = process.env[kCompanionPathEnv]?.trim() || process.env[kLegacyCompanionScriptEnv]?.trim();
   if (!companionPath)
@@ -78,10 +79,14 @@ export async function tryEnsureExistingSelectorAuthoringToolWindowVisible(): Pro
       child.stdin.write(`${JSON.stringify({
         requestId: 1,
         kind: 'ensureWindowByTitlePrefixVisible',
-        sessionId: 'selector-authoring-restore',
-        toolTitlePrefix: kSelectorAuthoringToolTitlePrefix,
+        sessionId: `${config.sessionIdPrefix}-restore`,
+        toolTitlePrefix: config.toolTitlePrefix,
       })}\n`);
       child.stdin.end();
     });
   });
+}
+
+export async function tryEnsureExistingSelectorAuthoringToolWindowVisible(): Promise<boolean> {
+  return tryEnsureExistingAuthoringToolWindowVisible('selector');
 }

@@ -17,7 +17,8 @@
 import type { CallLog, Mode, Source } from './recorderTypes';
 import * as React from 'react';
 import './recorder.css';
-import { getRecorderMessages, normalizeRecorderLocale } from './messages';
+import { getSelectorAuthoringMessages, normalizeRecorderLocale } from './messages';
+import { createRecorderBackend } from './recorderBackend';
 import { copySelectorToClipboard } from './selectorAuthoring';
 
 import type { RecorderBackend, RecorderFrontend, RecorderLocale, SelectorAuthoringDiagnostic } from './recorderTypes';
@@ -29,7 +30,7 @@ type SelectorEntry = {
   selectedAt: string;
 };
 
-export const Recorder: React.FC = ({}) => {
+export const SelectorAuthoringApp: React.FC = () => {
   const [, setSources] = React.useState<Source[]>([]);
   const [mode, setMode] = React.useState<Mode>('none');
   const backend = React.useMemo(createRecorderBackend, []);
@@ -40,7 +41,7 @@ export const Recorder: React.FC = ({}) => {
   const [copiedEntryId, setCopiedEntryId] = React.useState<string | undefined>();
   const [selectorAuthoringDiagnostic, setSelectorAuthoringDiagnostic] = React.useState<SelectorAuthoringDiagnostic | null>(null);
   const nextEntryId = React.useRef(0);
-  const i18n = React.useMemo(() => getRecorderMessages(locale), [locale]);
+  const i18n = React.useMemo(() => getSelectorAuthoringMessages(locale), [locale]);
 
   React.useEffect(() => {
     if (!copiedEntryId)
@@ -204,18 +205,6 @@ export const Recorder: React.FC = ({}) => {
     </div>
   </div>;
 };
-
-function createRecorderBackend(): RecorderBackend {
-  return new Proxy({} as RecorderBackend, {
-    get: (_target, prop: string | symbol) => {
-      if (typeof prop !== 'string')
-        return undefined;
-      return (params?: any) => {
-        return window.sendCommand({ method: prop, params });
-      };
-    },
-  });
-}
 
 function formatTimestamp(value: string): string {
   try {

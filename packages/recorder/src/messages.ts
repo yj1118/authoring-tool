@@ -16,7 +16,11 @@
 
 import type { RecorderLocale } from './recorderTypes';
 
-type RecorderMessages = {
+type AuthoringCommonMessages = {
+  authoringToolName: string;
+};
+
+type SelectorAuthoringMessages = {
   windowTitle: string;
   pickSelector: string;
   stopPicking: string;
@@ -31,62 +35,114 @@ type RecorderMessages = {
   emptySuffix: string;
 };
 
-const messages: Record<RecorderLocale, RecorderMessages> = {
+type RecorderAuthoringMessages = {
+  windowTitle: string;
+  recorderPlaceholderTitle: string;
+  recorderPlaceholderBody: string;
+};
+
+type AuthoringMessages = {
+  common: AuthoringCommonMessages;
+  selector: SelectorAuthoringMessages;
+  recorder: RecorderAuthoringMessages;
+};
+
+const messages: Record<RecorderLocale, AuthoringMessages> = {
   en: {
-    windowTitle: 'Selector Authoring Tool',
-    pickSelector: 'Pick selector',
-    stopPicking: 'Stop picking',
-    savedCount: count => `${count} saved`,
-    clearAll: 'Clear all',
-    copied: 'Copied',
-    copy: 'Copy',
-    remove: 'Remove',
-    notePlaceholder: 'Add an optional note here',
-    emptyTitle: 'No selectors saved yet',
-    emptyPrefix: 'Start with ',
-    emptySuffix: ', then click elements in the page to build a reusable selector list.',
+    common: {
+      authoringToolName: 'Authoring Tool',
+    },
+    selector: {
+      windowTitle: 'Selector Authoring Tool',
+      pickSelector: 'Pick selector',
+      stopPicking: 'Stop picking',
+      savedCount: count => `${count} saved`,
+      clearAll: 'Clear all',
+      copied: 'Copied',
+      copy: 'Copy',
+      remove: 'Remove',
+      notePlaceholder: 'Add an optional note here',
+      emptyTitle: 'No selectors saved yet',
+      emptyPrefix: 'Start with ',
+      emptySuffix: ', then click elements in the page to build a reusable selector list.',
+    },
+    recorder: {
+      windowTitle: 'Recorder Authoring Tool',
+      recorderPlaceholderTitle: 'Recorder mode is not available yet',
+      recorderPlaceholderBody: 'This authoring mode is reserved for recorded step replay. Selector mode remains available.',
+    },
   },
   'zh-CN': {
-    windowTitle: '选择器工具',
-    pickSelector: '选择元素',
-    stopPicking: '停止选择',
-    savedCount: count => `已保存 ${count} 个`,
-    clearAll: '清空全部',
-    copied: '已复制',
-    copy: '复制',
-    remove: '移除',
-    notePlaceholder: '可选备注',
-    emptyTitle: '还没有保存任何选择器',
-    emptyPrefix: '先点击',
-    emptySuffix: '，再点击页面中的元素，即可建立可复用的选择器列表。',
+    common: {
+      authoringToolName: '创作工具',
+    },
+    selector: {
+      windowTitle: '选择器工具',
+      pickSelector: '选择元素',
+      stopPicking: '停止选择',
+      savedCount: count => `已保存 ${count} 个`,
+      clearAll: '清空全部',
+      copied: '已复制',
+      copy: '复制',
+      remove: '移除',
+      notePlaceholder: '可选备注',
+      emptyTitle: '还没有保存任何选择器',
+      emptyPrefix: '先点击',
+      emptySuffix: '，再点击页面中的元素，即可建立可复用的选择器列表。',
+    },
+    recorder: {
+      windowTitle: '录制工具',
+      recorderPlaceholderTitle: '录制模式暂未开放',
+      recorderPlaceholderBody: '这里是录制回放模组的预留入口。当前选择器模式仍可正常使用。',
+    },
   },
   'zh-TW': {
-    windowTitle: '選擇器工具',
-    pickSelector: '選取元素',
-    stopPicking: '停止選取',
-    savedCount: count => `已儲存 ${count} 個`,
-    clearAll: '清空全部',
-    copied: '已複製',
-    copy: '複製',
-    remove: '移除',
-    notePlaceholder: '可選備註',
-    emptyTitle: '尚未儲存任何選擇器',
-    emptyPrefix: '先點擊',
-    emptySuffix: '，再點擊頁面中的元素，即可建立可重複使用的選擇器清單。',
+    common: {
+      authoringToolName: '創作工具',
+    },
+    selector: {
+      windowTitle: '選擇器工具',
+      pickSelector: '選取元素',
+      stopPicking: '停止選取',
+      savedCount: count => `已儲存 ${count} 個`,
+      clearAll: '清空全部',
+      copied: '已複製',
+      copy: '複製',
+      remove: '移除',
+      notePlaceholder: '可選備註',
+      emptyTitle: '尚未儲存任何選擇器',
+      emptyPrefix: '先點擊',
+      emptySuffix: '，再點擊頁面中的元素，即可建立可重複使用的選擇器清單。',
+    },
+    recorder: {
+      windowTitle: '錄製工具',
+      recorderPlaceholderTitle: '錄製模式尚未開放',
+      recorderPlaceholderBody: '這裡是錄製回放模組的預留入口。現在選擇器模式仍可正常使用。',
+    },
   },
   'ja-JP': {
-    windowTitle: 'セレクターツール',
-    pickSelector: '要素を選択',
-    stopPicking: '選択を停止',
-    savedCount: count => `${count} 件保存済み`,
-    clearAll: 'すべてクリア',
-    copied: 'コピー済み',
-    copy: 'コピー',
-    remove: '削除',
-    notePlaceholder: '任意のメモ',
-    emptyTitle: '保存済みのセレクターはまだありません',
-    emptyPrefix: 'まず',
-    emptySuffix: 'を押してから、ページ内の要素をクリックして再利用可能なセレクター一覧を作成します。',
+    common: {
+      authoringToolName: 'オーサリングツール',
+    },
+    selector: {
+      windowTitle: 'セレクターツール',
+      pickSelector: '要素を選択',
+      stopPicking: '選択を停止',
+      savedCount: count => `${count} 件保存済み`,
+      clearAll: 'すべてクリア',
+      copied: 'コピー済み',
+      copy: 'コピー',
+      remove: '削除',
+      notePlaceholder: '任意のメモ',
+      emptyTitle: '保存済みのセレクターはまだありません',
+      emptyPrefix: 'まず',
+      emptySuffix: 'を押してから、ページ内の要素をクリックして再利用可能なセレクター一覧を作成します。',
+    },
+    recorder: {
+      windowTitle: 'レコーダーツール',
+      recorderPlaceholderTitle: 'レコーダーモードはまだ利用できません',
+      recorderPlaceholderBody: 'この authoring mode は recorded step replay 用の予約入口です。セレクターモードは引き続き利用できます。',
+    },
   },
 };
 
@@ -103,6 +159,14 @@ export function normalizeRecorderLocale(input: string | null | undefined): Recor
   return 'en';
 }
 
-export function getRecorderMessages(locale: string | null | undefined): RecorderMessages {
+export function getAuthoringMessages(locale: string | null | undefined): AuthoringMessages {
   return messages[normalizeRecorderLocale(locale)];
+}
+
+export function getSelectorAuthoringMessages(locale: string | null | undefined): SelectorAuthoringMessages {
+  return getAuthoringMessages(locale).selector;
+}
+
+export function getRecorderAuthoringMessages(locale: string | null | undefined): RecorderAuthoringMessages {
+  return getAuthoringMessages(locale).recorder;
 }

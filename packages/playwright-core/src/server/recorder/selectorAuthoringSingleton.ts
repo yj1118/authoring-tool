@@ -18,6 +18,7 @@ import net from 'net';
 import readline from 'readline';
 
 import { makeSocketPath } from '../utils/fileUtils';
+import { resolveAuthoringModeConfig, type AuthoringMode } from './authoringMode';
 
 type ActivationRequest = {
   kind: 'activate';
@@ -28,12 +29,13 @@ type ActivationResponse = {
   error?: string;
 };
 
-const kSelectorAuthoringSingletonPath = makeSocketPath('selector-authoring', 'singleton');
 const kActivationTimeoutMs = 1500;
 
-export async function tryActivateExistingSelectorAuthoringInstance(): Promise<boolean> {
+export async function tryActivateExistingAuthoringInstance(mode: AuthoringMode): Promise<boolean> {
+  const config = resolveAuthoringModeConfig(mode);
+  const singletonPath = makeSocketPath(config.singletonDomain, config.singletonName);
   return await new Promise<boolean>(resolve => {
-    const socket = net.createConnection(kSelectorAuthoringSingletonPath);
+    const socket = net.createConnection(singletonPath);
     let settled = false;
 
     const finish = (result: boolean) => {
@@ -74,17 +76,24 @@ export async function tryActivateExistingSelectorAuthoringInstance(): Promise<bo
   });
 }
 
-export class SelectorAuthoringSingleton {
-  private readonly _server: net.Server;
+export async function tryActivateExistingSelectorAuthoringInstance(): Promise<boolean> {
+  return tryActivateExistingAuthoringInstance('selector');
+}
 
-  private constructor(private readonly _onActivate: () => Promise<void>) {
+export class AuthoringSingleton {
+  private readonly _server: net.Server;
+  private readonly _singletonPath: string;
+
+  private constructor(mode: AuthoringMode, private readonly _onActivate: () => Promise<void>) {
+    const config = resolveAuthoringModeConfig(mode);
+    this._singletonPath = makeSocketPath(config.singletonDomain, config.singletonName);
     this._server = net.createServer(socket => {
       void this._handleConnection(socket);
     });
   }
 
-  static async start(onActivate: () => Promise<void>): Promise<SelectorAuthoringSingleton> {
-    const singleton = new SelectorAuthoringSingleton(onActivate);
+  static async start(mode: AuthoringMode, onActivate: () => Promise<void>): Promise<AuthoringSingleton> {
+    const singleton = new AuthoringSingleton(mode, onActivate);
     await singleton._listen();
     return singleton;
   }
@@ -113,7 +122,7 @@ export class SelectorAuthoringSingleton {
       };
       this._server.once('error', onError);
       this._server.once('listening', onListening);
-      this._server.listen(kSelectorAuthoringSingletonPath);
+      this._server.listen(this._singletonPath);
     });
   }
 
@@ -124,7 +133,7 @@ export class SelectorAuthoringSingleton {
       try {
         const request = JSON.parse(line) as ActivationRequest;
         if (request.kind !== 'activate')
-          throw new Error(`Unsupported selector authoring singleton command: ${request.kind}`);
+          throw new Error(`Unsupported authoring singleton command: ${request.kind}`);
         await this._onActivate();
         response = { ok: true };
       } catch (error) {
@@ -139,5 +148,18 @@ export class SelectorAuthoringSingleton {
         socket.end();
       });
     });
+  }
+}
+
+export class SelectorAuthoringSingleton {
+  private constructor(private readonly _inner: AuthoringSingleton) {
+  }
+
+  static async start(onActivate: () => Promise<void>): Promise<SelectorAuthoringSingleton> {
+    return new SelectorAuthoringSingleton(await AuthoringSingleton.start('selector', onActivate));
+  }
+
+  async close(): Promise<void> {
+    await this._inner.close();
   }
 }
