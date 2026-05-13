@@ -25,6 +25,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function describeFetchError(error: unknown): string {
+  const parts: string[] = [];
+  if (error instanceof Error && error.message.trim())
+    parts.push(error.message.trim());
+
+  const cause = isRecord(error) && error.cause instanceof Error ? error.cause : null;
+  if (cause?.message?.trim() && !parts.includes(cause.message.trim()))
+    parts.push(cause.message.trim());
+
+  return parts.length ? parts.join(': ') : 'network request failed';
+}
+
 function normalizeHeaders(value: unknown): Record<string, string> | undefined {
   if (!isRecord(value))
     return undefined;
@@ -122,26 +134,40 @@ export async function saveRecordingThroughClient(request: RecordingSaveRequest):
   if (!launchContext.orchestratorBaseUrl && (!launchContext.recordingBridgeBaseUrl || !launchContext.recordingBridgeToken))
     throw new Error('Recorder launch context is missing recording persistence target.');
 
-  const response = await fetch(new URL('/api/v1/recording/save', launchContext.clientBaseUrl).toString(), {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      caseId: launchContext.caseId,
-      stepId: launchContext.stepId,
-      orchestratorBaseUrl: launchContext.orchestratorBaseUrl,
-      orchestratorHeaders: launchContext.orchestratorHeaders,
-      recordingBridgeBaseUrl: launchContext.recordingBridgeBaseUrl,
-      recordingBridgeToken: launchContext.recordingBridgeToken,
-      startUrl: request.startUrl ?? launchContext.startUrl,
-      scriptText: request.scriptText,
-      actionCount: request.actionCount,
-      assertionCount: request.assertionCount,
-      sourceId: request.sourceId,
-      timeoutMs: request.timeoutMs,
-    }),
-  });
+  const clientSaveUrl = new URL('/api/v1/recording/save', launchContext.clientBaseUrl).toString();
+  let response: Response;
+  try {
+    response = await fetch(clientSaveUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        caseId: launchContext.caseId,
+        stepId: launchContext.stepId,
+        orchestratorBaseUrl: launchContext.orchestratorBaseUrl,
+        orchestratorHeaders: launchContext.orchestratorHeaders,
+        recordingBridgeBaseUrl: launchContext.recordingBridgeBaseUrl,
+        recordingBridgeToken: launchContext.recordingBridgeToken,
+        startUrl: request.startUrl ?? launchContext.startUrl,
+        scriptText: request.scriptText,
+        actionCount: request.actionCount,
+        assertionCount: request.assertionCount,
+        sourceId: request.sourceId,
+        timeoutMs: request.timeoutMs,
+      }),
+    });
+  } catch (error) {
+    throw createRecordingAuthoringError({
+      reasonCode: recordingReasonCodes.uploadFailed,
+      message: `Local Client is unreachable at ${launchContext.clientBaseUrl}. Keep the Client running and retry. ${describeFetchError(error)}`,
+      details: {
+        clientBaseUrl: launchContext.clientBaseUrl,
+        clientSaveUrl,
+      },
+      cause: error,
+    });
+  }
 
   return await readJsonResponse(response, 'recording save') as RecordingSaveResult;
 }

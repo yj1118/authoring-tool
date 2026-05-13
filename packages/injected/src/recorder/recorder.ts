@@ -1435,6 +1435,8 @@ export class Recorder {
     const cursor = newTool.cursor?.();
     if (cursor)
       this.injectedScript.document.body?.setAttribute('data-pw-cursor', cursor);
+    else
+      this.injectedScript.document.body?.removeAttribute('data-pw-cursor');
   }
 
   setUIState(state: UIState, delegate: RecorderDelegate) {
