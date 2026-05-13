@@ -36,6 +36,14 @@ type RecorderOptions = {
   recordScrollActions?: boolean;
 };
 
+function isRecorderCaptureMode(mode: Mode): boolean {
+  return mode === 'recording'
+    || mode === 'assertingVisibility'
+    || mode === 'assertingText'
+    || mode === 'assertingValue'
+    || mode === 'assertingSnapshot';
+}
+
 const HighlightColors = {
   multiple: '#f6b26b7f',
   single: '#6fa8dc7f',
@@ -57,6 +65,7 @@ interface RecorderTool {
   cursor?(): string;
   install?(): void;
   uninstall?(): void;
+  allowsPositionActionRecording?(): boolean;
   onClick?(event: MouseEvent): void;
   onDblClick?(event: MouseEvent): void;
   onContextMenu?(event: MouseEvent): void;
@@ -77,6 +86,76 @@ interface RecorderTool {
 }
 
 class NoneTool implements RecorderTool {
+}
+
+// Shared capture for position-changing page state. Today this records scroll
+// positions, and it is intentionally independent from the active tool so
+// assertion modes can preserve the navigation needed to reach a target.
+class PositionActionRecorder {
+  private _recorder: Recorder;
+  private _pendingScrollAction: { target: HTMLElement, timeout: number } | undefined;
+  private _suppressionDepth = 0;
+
+  constructor(recorder: Recorder) {
+    this._recorder = recorder;
+  }
+
+  onScroll(event: Event) {
+    if (!this._recorder.shouldRecordPositionActions())
+      return;
+    if (this._suppressionDepth)
+      return;
+    const target = scrollTargetForEvent(event, this._recorder.document);
+    if (!target)
+      return;
+    this._scheduleScrollAction(target);
+  }
+
+  async flushPendingActions() {
+    await this._flushPendingScrollAction();
+  }
+
+  async runWithoutCapture<T>(callback: () => Promise<T>): Promise<T> {
+    ++this._suppressionDepth;
+    try {
+      return await callback();
+    } finally {
+      --this._suppressionDepth;
+    }
+  }
+
+  private _scheduleScrollAction(target: HTMLElement) {
+    const builtins = this._recorder.injectedScript.utils.builtins;
+    if (this._pendingScrollAction?.target !== target)
+      void this._flushPendingScrollAction();
+    if (this._pendingScrollAction)
+      builtins.clearTimeout(this._pendingScrollAction.timeout);
+    this._pendingScrollAction = {
+      target,
+      timeout: builtins.setTimeout(() => void this._flushPendingScrollAction(), 350),
+    };
+  }
+
+  private async _flushPendingScrollAction() {
+    const pending = this._pendingScrollAction;
+    if (!pending)
+      return;
+    this._recorder.injectedScript.utils.builtins.clearTimeout(pending.timeout);
+    this._pendingScrollAction = undefined;
+    if (!pending.target.isConnected)
+      return;
+    const position = scrollPositionForElement(pending.target);
+    const generated = this._recorder.injectedScript.generateSelector(pending.target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    if (!generated.selector)
+      return;
+    await this._recorder.recordAction({
+      name: 'scroll',
+      selector: generated.selector,
+      signals: [],
+      x: position.x,
+      y: position.y,
+    });
+  }
 }
 
 class InspectTool implements RecorderTool {
@@ -226,7 +305,6 @@ class RecordActionTool implements RecorderTool {
   private _activeModel: HighlightModelWithSelector | null = null;
   private _expectProgrammaticKeyUp = false;
   private _pendingClickAction: { action: actions.ClickAction, timeout: number } | undefined;
-  private _pendingScrollAction: { target: HTMLElement, timeout: number } | undefined;
   private _observer: MutationObserver | null = null;
   private _dialog: Dialog;
 
@@ -259,15 +337,17 @@ class RecordActionTool implements RecorderTool {
   }
 
   uninstall() {
-    void this._flushPendingScrollAction();
     this._observer?.disconnect();
     this._observer = null;
     this._hoveredModel = null;
     this._hoveredElement = null;
     this._activeModel = null;
     this._expectProgrammaticKeyUp = false;
-    this._pendingScrollAction = undefined;
     this._dialog.close();
+  }
+
+  allowsPositionActionRecording() {
+    return !this._dialog.isShowing() && !this._performingActions.size;
   }
 
   onClick(event: MouseEvent) {
@@ -545,52 +625,6 @@ class RecordActionTool implements RecorderTool {
     if (this._dialog.isShowing())
       return;
     this._resetHoveredModel();
-    if (!this._recorder.recordScrollActions())
-      return;
-    if (this._performingActions.size)
-      return;
-    const target = scrollTargetForEvent(event, this._recorder.document);
-    if (!target)
-      return;
-    this._scheduleScrollAction(target);
-  }
-
-  flushPendingActions() {
-    return this._flushPendingScrollAction();
-  }
-
-  private _scheduleScrollAction(target: HTMLElement) {
-    const builtins = this._recorder.injectedScript.utils.builtins;
-    if (this._pendingScrollAction?.target !== target)
-      this._flushPendingScrollAction();
-    if (this._pendingScrollAction)
-      builtins.clearTimeout(this._pendingScrollAction.timeout);
-    this._pendingScrollAction = {
-      target,
-      timeout: builtins.setTimeout(() => void this._flushPendingScrollAction(), 350),
-    };
-  }
-
-  private async _flushPendingScrollAction() {
-    const pending = this._pendingScrollAction;
-    if (!pending)
-      return;
-    this._recorder.injectedScript.utils.builtins.clearTimeout(pending.timeout);
-    this._pendingScrollAction = undefined;
-    if (!pending.target.isConnected)
-      return;
-    const position = scrollPositionForElement(pending.target);
-    const generated = this._recorder.injectedScript.generateSelector(pending.target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
-    if (!generated.selector)
-      return;
-    await this._recorder.recordAction({
-      name: 'scroll',
-      selector: generated.selector,
-      signals: [],
-      x: position.x,
-      y: position.y,
-    });
-    this._reportPerformedActionForTests();
   }
 
   private _showActionListDialog(model: HighlightModelWithSelector, event: MouseEvent) {
@@ -751,8 +785,6 @@ class RecordActionTool implements RecorderTool {
 
   private _recordAction(action: actions.Action) {
     void (async () => {
-      if (action.name !== 'scroll')
-        await this._flushPendingScrollAction().catch(() => {});
       await this._recorder.recordAction(action);
       this._reportPerformedActionForTests();
     })();
@@ -764,7 +796,6 @@ class RecordActionTool implements RecorderTool {
     this._performingActions.add(action);
 
     void (async () => {
-      await this._flushPendingScrollAction().catch(() => {});
       await this._recorder.performAction(action);
     })().finally(() => {
       this._performingActions.delete(action);
@@ -1059,6 +1090,10 @@ class TextAssertionTool implements RecorderTool {
   uninstall() {
     this._dialog.close();
     this._hoverHighlight = null;
+  }
+
+  allowsPositionActionRecording() {
+    return !this._dialog.isShowing();
   }
 
   onClick(event: MouseEvent) {
@@ -1402,6 +1437,7 @@ export class Recorder {
   private _stickyAssertionMode: boolean;
   private _hideActionHoverHighlight: boolean;
   private _recordScrollActions: boolean;
+  private _positionActionRecorder: PositionActionRecorder;
   state: UIState = {
     mode: 'none',
     testIdAttributeName: 'data-testid',
@@ -1418,6 +1454,7 @@ export class Recorder {
     this._stickyAssertionMode = !!options?.stickyAssertionMode;
     this._hideActionHoverHighlight = !!options?.hideActionHoverHighlight;
     this._recordScrollActions = !!options?.recordScrollActions;
+    this._positionActionRecorder = new PositionActionRecorder(this);
     this._tools = {
       'none': new NoneTool(),
       'standby': new NoneTool(),
@@ -1662,6 +1699,7 @@ export class Recorder {
     this._lastHighlightedSelector = undefined;
     this._lastHighlightedAriaTemplateJSON = 'undefined';
     this.highlight.hideActionPoint();
+    this._positionActionRecorder.onScroll(event);
     this._currentTool.onScroll?.(event);
   }
 
@@ -1738,7 +1776,16 @@ export class Recorder {
     return this._recordScrollActions;
   }
 
+  shouldRecordPositionActions(): boolean {
+    if (!this._recordScrollActions)
+      return false;
+    if (!isRecorderCaptureMode(this.state.mode))
+      return false;
+    return this._currentTool.allowsPositionActionRecording?.() ?? true;
+  }
+
   async flushPendingActions() {
+    await this._positionActionRecorder.flushPendingActions();
     await this._currentTool.flushPendingActions?.();
   }
 
@@ -1748,6 +1795,7 @@ export class Recorder {
   }
 
   async performAction(action: actions.PerformOnRecordAction) {
+    await this._positionActionRecorder.flushPendingActions().catch(() => {});
     const previousSnapshot = this._lastActionAutoexpectSnapshot;
     this._lastActionAutoexpectSnapshot = this._captureAutoExpectSnapshot();
     if (!isAssertAction(action) && this._lastActionAutoexpectSnapshot) {
@@ -1756,10 +1804,14 @@ export class Recorder {
       if (action.preconditionSelector === action.selector)
         action.preconditionSelector = undefined;
     }
-    await this._delegate.performAction?.(action).catch(() => {});
+    await this._positionActionRecorder.runWithoutCapture(async () => {
+      await this._delegate.performAction?.(action).catch(() => {});
+    });
   }
 
   async recordAction(action: actions.Action) {
+    if (action.name !== 'scroll')
+      await this._positionActionRecorder.flushPendingActions().catch(() => {});
     this._lastActionAutoexpectSnapshot = this._captureAutoExpectSnapshot();
     await this._delegate.recordAction?.(action);
   }
