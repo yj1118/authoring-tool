@@ -1969,6 +1969,8 @@ export type BrowserContextEnableRecorderParams = {
   omitCallTracking?: boolean,
   hideInspector?: boolean,
   hideToolbar?: boolean,
+  stickyAssertionMode?: boolean,
+  hideActionHoverHighlight?: boolean,
 };
 export type BrowserContextEnableRecorderOptions = {
   language?: string,
@@ -1985,6 +1987,8 @@ export type BrowserContextEnableRecorderOptions = {
   omitCallTracking?: boolean,
   hideInspector?: boolean,
   hideToolbar?: boolean,
+  stickyAssertionMode?: boolean,
+  hideActionHoverHighlight?: boolean,
 };
 export type BrowserContextEnableRecorderResult = void;
 export type BrowserContextDisableRecorderParams = {};

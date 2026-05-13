@@ -63,8 +63,8 @@ type CompanionResponse = {
   error?: string;
 };
 
-const kCompanionPathEnv = 'TEST_BOT_WINDOWS_TOPMOST_COMPANION_PATH';
-const kLegacyCompanionScriptEnv = 'TEST_BOT_WINDOWS_TOPMOST_COMPANION_SCRIPT';
+const kCompanionPathEnv = 'AUTHORING_TOOL_WINDOWS_TOPMOST_COMPANION_PATH';
+const kLegacyCompanionScriptEnv = 'AUTHORING_TOOL_WINDOWS_TOPMOST_COMPANION_SCRIPT';
 const kAttachRetryCount = 5;
 const kAttachRetryDelayMs = 150;
 

@@ -278,16 +278,23 @@
 
 .recorder-authoring-action-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  gap: 10px;
   align-items: center;
-  padding: 8px 10px;
+  min-height: 54px;
+  padding: 8px 9px 8px 12px;
   border: 1px solid var(--sa-border);
   border-radius: 10px;
   background: var(--sa-panel-bg);
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
-.recorder-authoring-action-row span {
+.recorder-authoring-action-row:hover {
+  border-color: rgba(11, 105, 199, 0.24);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.recorder-authoring-action-index {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -309,6 +316,42 @@
   font-family: var(--vscode-editor-font-family);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.recorder-authoring-action-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--sa-muted);
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 120ms ease, transform 120ms ease, color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.recorder-authoring-action-row:hover .recorder-authoring-action-delete,
+.recorder-authoring-action-delete:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.recorder-authoring-action-delete:hover,
+.recorder-authoring-action-delete:focus-visible {
+  color: var(--sa-danger);
+  background: var(--sa-danger-soft);
+  border-color: rgba(191, 59, 48, 0.18);
+  outline: none;
+}
+
+.recorder-authoring-action-delete:active {
+  transform: scale(0.94);
 }
 
 .selector-authoring-collection {
@@ -484,6 +527,17 @@
   background: var(--sa-surface-strong);
   border-color: var(--sa-border-strong);
   box-shadow: var(--sa-shadow-sm);
+}
+
+.selector-authoring-secondary-button.toggled {
+  color: var(--sa-danger);
+  background: var(--sa-danger-soft);
+  border-color: rgba(191, 59, 48, 0.28);
+}
+
+.selector-authoring-secondary-button.toggled:hover:not(:disabled) {
+  background: rgba(191, 59, 48, 0.12);
+  border-color: rgba(191, 59, 48, 0.36);
 }
 
 .selector-authoring-secondary-button:disabled {
@@ -669,6 +723,16 @@
   .selector-authoring-primary-button {
     padding: 7px 12px;
     font-size: 11px;
+  }
+
+  .recorder-authoring-action-row {
+    grid-template-columns: 28px minmax(0, 1fr) 30px;
+    padding: 7px 8px;
+  }
+
+  .recorder-authoring-action-delete {
+    opacity: 1;
+    transform: none;
   }
 
 }

@@ -21,6 +21,13 @@ import type { RecorderDelegate } from './recorder';
 import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 
+type RecorderOptions = {
+  recorderMode?: 'default' | 'api';
+  hideToolbar?: boolean;
+  stickyAssertionMode?: boolean;
+  hideActionHoverHighlight?: boolean;
+};
+
 interface Embedder {
   __pw_recorderPerformAction(action: actions.PerformOnRecordAction): Promise<void>;
   __pw_recorderRecordAction(action: actions.Action): Promise<void>;
@@ -38,7 +45,7 @@ export class PollingRecorder implements RecorderDelegate {
   private _pollRecorderModeTimer: number | undefined;
   private _lastStateJSON: string | undefined;
 
-  constructor(injectedScript: InjectedScript, options?: { recorderMode?: 'default' | 'api', hideToolbar?: boolean }) {
+  constructor(injectedScript: InjectedScript, options?: RecorderOptions) {
     this._recorder = new Recorder(injectedScript, options);
     this._embedder = injectedScript.window as any;
 

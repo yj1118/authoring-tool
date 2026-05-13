@@ -1429,6 +1429,8 @@ BrowserContext:
         omitCallTracking: boolean?
         hideInspector: boolean?
         hideToolbar: boolean?
+        stickyAssertionMode: boolean?
+        hideActionHoverHighlight: boolean?
 
     disableRecorder:
       internal: true
@@ -4589,4 +4591,3 @@ JsonPipe:
     closed:
       parameters:
         reason: string?
-

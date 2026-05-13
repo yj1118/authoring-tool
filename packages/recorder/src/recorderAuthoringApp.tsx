@@ -14,10 +14,11 @@
   limitations under the License.
 */
 
-import type { CallLog, Mode, RecordingLaunchContext, RecordingSaveResult, RecorderBackend, RecorderFrontend, Source } from './recorderTypes';
+import type { CallLog, Mode, RecordingLaunchContext, RecordingSaveResult, RecorderBackend, RecorderFrontend, RecorderLocale, Source } from './recorderTypes';
 import * as React from 'react';
 import './recorder.css';
 import { createRecorderBackend } from './recorderBackend';
+import { getRecorderAuthoringMessages, normalizeRecorderLocale } from './messages';
 import { generateModuleHandlerScriptFromSources } from './recorder/codegen/moduleHandlerScript';
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from './recorder/errors/recordingErrors';
 
@@ -32,26 +33,42 @@ type RecorderStatus =
   | { kind: 'saved'; result: RecordingSaveResult }
   | { kind: 'failed'; reasonCode: string; message: string };
 
-const windowTitle = 'Recorder Authoring Tool';
+type RecorderStatusKey = Exclude<RecorderStatus['kind'], 'saved' | 'failed'>;
+type RecorderCaptureMode = 'recording' | 'assertingVisibility' | 'assertingText' | 'assertingValue' | 'assertingSnapshot';
+type ActionPreviewEntry = {
+  key: string;
+  text: string;
+};
+
+function isRecorderCaptureMode(mode: Mode): mode is RecorderCaptureMode {
+  return mode === 'recording'
+    || mode === 'assertingVisibility'
+    || mode === 'assertingText'
+    || mode === 'assertingValue'
+    || mode === 'assertingSnapshot';
+}
 
 export const RecorderAuthoringApp: React.FC = () => {
   const backend = React.useMemo(createRecorderBackend, []);
+  const [locale, setLocale] = React.useState<RecorderLocale>(() => normalizeRecorderLocale(window.navigator.language));
+  const i18n = React.useMemo(() => getRecorderAuthoringMessages(locale), [locale]);
   const [mode, setMode] = React.useState<Mode>('none');
   const [sources, setSources] = React.useState<Source[]>([]);
+  const [deletedActionKeys, setDeletedActionKeys] = React.useState<Set<string>>(() => new Set());
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
   const [status, setStatus] = React.useState<RecorderStatus>({ kind: 'idle' });
 
   React.useEffect(() => {
-    document.title = pageUrl ? `${windowTitle} - ${pageUrl}` : windowTitle;
-  }, [pageUrl]);
+    document.title = pageUrl ? `${i18n.windowTitle} - ${pageUrl}` : i18n.windowTitle;
+  }, [i18n.windowTitle, pageUrl]);
 
   React.useLayoutEffect(() => {
     const dispatcher: RecorderFrontend = {
-      localeChanged: () => {},
+      localeChanged: ({ locale }) => setLocale(locale),
       modeChanged: ({ mode }) => {
         setMode(mode);
-        if (mode === 'recording')
+        if (isRecorderCaptureMode(mode))
           setStatus({ kind: 'recording' });
         else if (mode === 'standby' || mode === 'none')
           setStatus(current => current.kind === 'recording' ? { kind: 'stopped' } : current);
@@ -90,9 +107,11 @@ export const RecorderAuthoringApp: React.FC = () => {
     });
   }, [backend]);
 
+  const editableSources = React.useMemo(() => applyDeletedActionKeys(sources, deletedActionKeys), [deletedActionKeys, sources]);
+
   const generatedSummary = React.useMemo(() => {
     try {
-      const generated = generateModuleHandlerScriptFromSources(sources);
+      const generated = generateModuleHandlerScriptFromSources(editableSources);
       return {
         ok: true as const,
         actionCount: generated.actionCount,
@@ -102,27 +121,41 @@ export const RecorderAuthoringApp: React.FC = () => {
     } catch (error) {
       return {
         ok: false as const,
-        message: error instanceof Error ? error.message : String(error),
+        message: normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed).message,
       };
     }
-  }, [sources]);
+  }, [editableSources]);
 
-  const isRecording = mode === 'recording';
   const canSave = generatedSummary.ok && status.kind !== 'generating' && status.kind !== 'uploading' && status.kind !== 'committing';
+  const previewActions = React.useMemo(() => choosePreviewActions(sources, deletedActionKeys), [deletedActionKeys, sources]);
+  const generatedSummaryMessage = generatedSummary.ok
+    ? i18n.countSummary(generatedSummary.actionCount, generatedSummary.assertionCount)
+    : previewActions.length
+      ? generatedSummary.message
+      : i18n.recordAtLeastOneActionOrAssertion;
 
   const setRecorderMode = React.useCallback((nextMode: Mode) => {
     backend.setMode({ mode: nextMode }).catch(error => {
       const normalized = normalizeRecordingAuthoringError(
           error,
-          nextMode === 'recording' ? recordingReasonCodes.recordStartFailed : recordingReasonCodes.recordStopFailed,
+          isRecorderCaptureMode(nextMode) ? recordingReasonCodes.recordStartFailed : recordingReasonCodes.recordStopFailed,
       );
       setStatus({ kind: 'failed', reasonCode: normalized.reasonCode, message: normalized.message });
     });
   }, [backend]);
 
+  const modeButtons = React.useMemo(() => [
+    { mode: 'recording' as const, label: i18n.record, tooltip: i18n.tooltip.record },
+    { mode: 'assertingVisibility' as const, label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
+    { mode: 'assertingText' as const, label: i18n.assertText, tooltip: i18n.tooltip.assertText },
+    { mode: 'assertingValue' as const, label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },
+    { mode: 'assertingSnapshot' as const, label: i18n.assertAria, tooltip: i18n.tooltip.assertAria },
+  ], [i18n]);
+
   const clear = React.useCallback(() => {
     backend.clear().then(() => {
       setSources([]);
+      setDeletedActionKeys(new Set());
       setStatus({ kind: 'idle' });
     }).catch(error => {
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed);
@@ -130,10 +163,18 @@ export const RecorderAuthoringApp: React.FC = () => {
     });
   }, [backend]);
 
+  const deleteAction = React.useCallback((key: string) => {
+    setDeletedActionKeys(current => {
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
   const save = React.useCallback(async () => {
     try {
       setStatus({ kind: 'generating' });
-      const generated = generateModuleHandlerScriptFromSources(sources);
+      const generated = generateModuleHandlerScriptFromSources(editableSources);
       setStatus({ kind: 'uploading' });
       const result = await backend.saveRecording({
         scriptText: generated.scriptText,
@@ -145,57 +186,67 @@ export const RecorderAuthoringApp: React.FC = () => {
       });
       setStatus({ kind: 'committing' });
       if (result.ok !== true)
-        throw new Error(result.message || 'Recording save failed.');
+        throw new Error(result.message || i18n.saveFailed);
       setStatus({ kind: 'saved', result });
     } catch (error) {
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.uploadFailed);
       setStatus({ kind: 'failed', reasonCode: normalized.reasonCode, message: normalized.message });
     }
-  }, [backend, launchContext?.startUrl, pageUrl, sources]);
+  }, [backend, editableSources, i18n.saveFailed, launchContext?.startUrl, pageUrl]);
 
   const statusLabel = status.kind === 'saved'
-    ? `Saved ${status.result.recordingId ?? ''}`.trim()
+    ? i18n.saved(status.result.recordingId)
     : status.kind === 'failed'
       ? `${status.reasonCode}: ${status.message}`
-      : status.kind;
+      : i18n.status[status.kind as RecorderStatusKey];
 
   return <div className='recorder'>
     <div className='recorder-authoring-main'>
       <div className='recorder-authoring-toolbar'>
-        <button
-          className={`selector-authoring-primary-button ${isRecording ? 'toggled' : ''}`}
-          onClick={() => setRecorderMode(isRecording ? 'standby' : 'recording')}
-          type='button'
-        >
-          {isRecording ? 'Stop' : 'Record'}
-        </button>
-        <button className='selector-authoring-secondary-button' onClick={() => setRecorderMode('assertingVisibility')} type='button'>Visible</button>
-        <button className='selector-authoring-secondary-button' onClick={() => setRecorderMode('assertingText')} type='button'>Text</button>
-        <button className='selector-authoring-secondary-button' onClick={() => setRecorderMode('assertingValue')} type='button'>Value</button>
-        <button className='selector-authoring-secondary-button' onClick={() => setRecorderMode('assertingSnapshot')} type='button'>ARIA</button>
-        <button className='selector-authoring-secondary-button' disabled={!sources.length} onClick={clear} type='button'>Clear</button>
-        <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} type='button'>Save</button>
+        {modeButtons.map(button => {
+          const isActive = mode === button.mode;
+          return <button
+            className={`selector-authoring-secondary-button ${isActive ? 'toggled' : ''}`}
+            key={button.mode}
+            onClick={() => setRecorderMode(isActive ? 'standby' : button.mode)}
+            title={isActive ? i18n.tooltip.stop : button.tooltip}
+            type='button'
+          >
+            {isActive ? i18n.stop : button.label}
+          </button>;
+        })}
+        <button className='selector-authoring-secondary-button' disabled={!sources.length} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
+        <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
       </div>
 
       <div className='recorder-authoring-status'>
         <span>{statusLabel}</span>
-        <span>{launchContext ? `${launchContext.caseId} / ${launchContext.stepId}` : 'No launch context'}</span>
-        <span>{generatedSummary.ok ? `${generatedSummary.actionCount} actions, ${generatedSummary.assertionCount} assertions` : generatedSummary.message}</span>
+        <span>{launchContext ? `${launchContext.caseId} / ${launchContext.stepId}` : i18n.noLaunchContext}</span>
+        <span>{generatedSummaryMessage}</span>
       </div>
 
       <div className='recorder-authoring-source-panel'>
         {generatedSummary.ok ? (
           <div className='recorder-authoring-action-list'>
-            {choosePreviewActions(sources).map((action, index) => (
-              <div className='recorder-authoring-action-row' key={`${index}-${action}`}>
-                <span>{index + 1}</span>
-                <code>{action}</code>
+            {previewActions.map((action, index) => (
+              <div className='recorder-authoring-action-row' key={action.key}>
+                <span className='recorder-authoring-action-index'>{index + 1}</span>
+                <code>{action.text}</code>
+                <button
+                  aria-label={i18n.tooltip.deleteAction}
+                  className='recorder-authoring-action-delete'
+                  onClick={() => deleteAction(action.key)}
+                  title={i18n.tooltip.deleteAction}
+                  type='button'
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
         ) : (
           <div className='selector-authoring-empty'>
-            <div className='selector-authoring-empty-title'>No recorded actions yet</div>
+            <div className='selector-authoring-empty-title'>{previewActions.length ? generatedSummaryMessage : i18n.noRecordedActionsYet}</div>
           </div>
         )}
       </div>
@@ -203,10 +254,47 @@ export const RecorderAuthoringApp: React.FC = () => {
   </div>;
 };
 
-function choosePreviewActions(sources: Source[]): string[] {
-  const source = sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')
+function chooseRecordedSource(sources: Source[]): Source | undefined {
+  return sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')
     ?? sources.find(candidate => candidate.isRecorded && candidate.actions?.length);
-  return (source?.actions ?? [])
-      .map(action => action.trim().split('\n').find(line => line.trim().length > 0)?.trim() ?? '')
-      .filter(Boolean);
+}
+
+function normalizePreviewAction(action: string): string {
+  return action.trim().split('\n').find(line => line.trim().length > 0)?.trim() ?? '';
+}
+
+function hashActionText(action: string): string {
+  let hash = 0;
+  for (let i = 0; i < action.length; i++)
+    hash = Math.imul(31, hash) + action.charCodeAt(i) | 0;
+  return (hash >>> 0).toString(36);
+}
+
+function actionKey(source: Source, action: string, index: number): string {
+  return `${source.id}:${index}:${hashActionText(action)}`;
+}
+
+function applyDeletedActionKeys(sources: Source[], deletedActionKeys: Set<string>): Source[] {
+  if (!deletedActionKeys.size)
+    return sources;
+  return sources.map(source => {
+    if (!source.isRecorded || !source.actions?.length)
+      return source;
+    const actions = source.actions.filter((action, index) => !deletedActionKeys.has(actionKey(source, action, index)));
+    return { ...source, actions };
+  });
+}
+
+function choosePreviewActions(sources: Source[], deletedActionKeys: Set<string>): ActionPreviewEntry[] {
+  const source = sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')
+    ?? chooseRecordedSource(sources);
+  if (!source)
+    return [];
+  return (source.actions ?? []).flatMap((action, index) => {
+    const key = actionKey(source, action, index);
+    if (deletedActionKeys.has(key))
+      return [];
+    const text = normalizePreviewAction(action);
+    return text ? [{ key, text }] : [];
+  });
 }

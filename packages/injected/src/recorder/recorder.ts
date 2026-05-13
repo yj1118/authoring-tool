@@ -27,6 +27,14 @@ import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 import type { Language } from '@isomorphic/locatorGenerators';
 
+type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingValue' | 'assertingSnapshot';
+type RecorderOptions = {
+  recorderMode?: 'default' | 'api';
+  hideToolbar?: boolean;
+  stickyAssertionMode?: boolean;
+  hideActionHoverHighlight?: boolean;
+};
+
 const HighlightColors = {
   multiple: '#f6b26b7f',
   single: '#6fa8dc7f',
@@ -193,7 +201,7 @@ class InspectTool implements RecorderTool {
         selector,
         signals: [],
       });
-      this._recorder.setMode('recording');
+      this._recorder.setMode(this._recorder.modeAfterAssertion('assertingVisibility'));
       this._recorder.overlay?.flashToolSucceeded('assertingVisibility');
     } else {
       this._recorder.elementPicked(selector, model);
@@ -756,7 +764,7 @@ class RecordActionTool implements RecorderTool {
   }
 
   private _updateHighlight(userGesture: boolean) {
-    this._recorder.updateHighlight(this._hoveredModel, userGesture);
+    this._recorder.updateHighlight(this._recorder.hideActionHoverHighlight() ? null : this._hoveredModel, userGesture);
   }
 }
 
@@ -1120,7 +1128,7 @@ class TextAssertionTool implements RecorderTool {
       return;
     this._dialog.close();
     void this._recorder.recordAction(this._action);
-    this._recorder.setMode('recording');
+    this._recorder.setMode(this._recorder.modeAfterAssertion('assertingText'));
   }
 
   private _showDialog() {
@@ -1131,7 +1139,7 @@ class TextAssertionTool implements RecorderTool {
       this._showTextDialog(this._action);
     } else if (this._action?.name === 'assertSnapshot') {
       void this._recorder.recordAction(this._action);
-      this._recorder.setMode('recording');
+      this._recorder.setMode(this._recorder.modeAfterAssertion('assertingSnapshot'));
       this._recorder.overlay?.flashToolSucceeded('assertingSnapshot');
     }
   }
@@ -1172,7 +1180,7 @@ class TextAssertionTool implements RecorderTool {
     if (!action)
       return;
     void this._recorder.recordAction(action);
-    this._recorder.setMode('recording');
+    this._recorder.setMode(this._recorder.modeAfterAssertion('assertingValue'));
     this._recorder.overlay?.flashToolSucceeded('assertingValue');
   }
 }
@@ -1332,6 +1340,8 @@ export class Recorder {
   readonly overlay: Overlay | undefined;
   private _stylesheet: CSSStyleSheet;
   private _hoveredInspectedModel: HighlightModel | null = null;
+  private _stickyAssertionMode: boolean;
+  private _hideActionHoverHighlight: boolean;
   state: UIState = {
     mode: 'none',
     testIdAttributeName: 'data-testid',
@@ -1341,10 +1351,12 @@ export class Recorder {
   readonly document: Document;
   private _delegate: RecorderDelegate = {};
 
-  constructor(injectedScript: InjectedScript, options?: { recorderMode?: 'default' | 'api', hideToolbar?: boolean }) {
+  constructor(injectedScript: InjectedScript, options?: RecorderOptions) {
     this.document = injectedScript.document;
     this.injectedScript = injectedScript;
     this.highlight = injectedScript.createHighlight();
+    this._stickyAssertionMode = !!options?.stickyAssertionMode;
+    this._hideActionHoverHighlight = !!options?.hideActionHoverHighlight;
     this._tools = {
       'none': new NoneTool(),
       'standby': new NoneTool(),
@@ -1649,6 +1661,14 @@ export class Recorder {
 
   setMode(mode: Mode) {
     void this._delegate.setMode?.(mode);
+  }
+
+  modeAfterAssertion(assertionMode: AssertionMode): Mode {
+    return this._stickyAssertionMode ? assertionMode : 'recording';
+  }
+
+  hideActionHoverHighlight(): boolean {
+    return this._hideActionHoverHighlight;
   }
 
   private _captureAutoExpectSnapshot() {

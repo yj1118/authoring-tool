@@ -1133,6 +1133,8 @@ scheme.BrowserContextEnableRecorderParams = tObject({
   omitCallTracking: tOptional(tBoolean),
   hideInspector: tOptional(tBoolean),
   hideToolbar: tOptional(tBoolean),
+  stickyAssertionMode: tOptional(tBoolean),
+  hideActionHoverHighlight: tOptional(tBoolean),
 });
 scheme.BrowserContextEnableRecorderResult = tOptional(tObject({}));
 scheme.BrowserContextDisableRecorderParams = tOptional(tObject({}));

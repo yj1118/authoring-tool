@@ -40,7 +40,7 @@ const authoringModeConfigs: Record<AuthoringMode, AuthoringModeConfig> = {
     singletonName: 'singleton',
     sessionIdPrefix: 'recorder-authoring',
     toolTitlePrefix: 'Recorder Authoring Tool',
-    dockWindows: false,
+    dockWindows: true,
   },
 };
 
@@ -56,14 +56,14 @@ export function resolveAuthoringModeConfig(mode: AuthoringMode): AuthoringModeCo
 }
 
 export function resolveAuthoringModeConfigFromEnv(): AuthoringModeConfig | null {
-  const explicitMode = normalizeAuthoringMode(process.env.TEST_BOT_AUTHORING_MODE);
+  const explicitMode = normalizeAuthoringMode(process.env.AUTHORING_TOOL_MODE);
   if (explicitMode)
     return resolveAuthoringModeConfig(explicitMode);
-  if (process.env.TEST_BOT_SELECTOR_AUTHORING_ENABLED === '1')
+  if (process.env.AUTHORING_TOOL_SELECTOR_ENABLED === '1')
     return resolveAuthoringModeConfig('selector');
   return null;
 }
 
 export function resolveAuthoringLocaleFromEnv(): string | undefined {
-  return process.env.TEST_BOT_AUTHORING_UI_LOCALE || process.env.TEST_BOT_SELECTOR_AUTHORING_UI_LOCALE;
+  return process.env.AUTHORING_TOOL_UI_LOCALE;
 }

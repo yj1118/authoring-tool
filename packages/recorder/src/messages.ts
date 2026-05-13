@@ -39,6 +39,40 @@ type RecorderAuthoringMessages = {
   windowTitle: string;
   recorderPlaceholderTitle: string;
   recorderPlaceholderBody: string;
+  record: string;
+  stop: string;
+  assertVisible: string;
+  assertText: string;
+  assertValue: string;
+  assertAria: string;
+  clear: string;
+  save: string;
+  noLaunchContext: string;
+  noRecordedActionsYet: string;
+  recordAtLeastOneActionOrAssertion: string;
+  saveFailed: string;
+  saved: (recordingId?: string) => string;
+  countSummary: (actionCount: number, assertionCount: number) => string;
+  tooltip: {
+    record: string;
+    stop: string;
+    assertVisible: string;
+    assertText: string;
+    assertValue: string;
+    assertAria: string;
+    clear: string;
+    save: string;
+    deleteAction: string;
+  };
+  status: {
+    idle: string;
+    ready: string;
+    recording: string;
+    stopped: string;
+    generating: string;
+    uploading: string;
+    committing: string;
+  };
 };
 
 type AuthoringMessages = {
@@ -70,6 +104,40 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       windowTitle: 'Recorder Authoring Tool',
       recorderPlaceholderTitle: 'Recorder mode is not available yet',
       recorderPlaceholderBody: 'This authoring mode is reserved for recorded step replay. Selector mode remains available.',
+      record: 'Actions',
+      stop: 'Stop',
+      assertVisible: 'Visible',
+      assertText: 'Text',
+      assertValue: 'Value',
+      assertAria: 'ARIA',
+      clear: 'Clear',
+      save: 'Save',
+      noLaunchContext: 'No launch context',
+      noRecordedActionsYet: 'No recorded actions yet',
+      recordAtLeastOneActionOrAssertion: 'Record at least one action or assertion before saving.',
+      saveFailed: 'Recording save failed.',
+      saved: recordingId => `Saved ${recordingId ?? ''}`.trim(),
+      countSummary: (actionCount, assertionCount) => `${actionCount} actions, ${assertionCount} assertions`,
+      tooltip: {
+        record: 'Record browser actions such as clicks, typing, selections, and navigation.',
+        stop: 'Stop recording new browser interactions.',
+        assertVisible: 'Pick an element and record an assertion that it should be visible.',
+        assertText: 'Pick an element and record an assertion for its current text.',
+        assertValue: 'Pick a form control and record an assertion for its current value.',
+        assertAria: 'Pick a region and record an ARIA snapshot assertion for its accessibility structure.',
+        clear: 'Clear all recorded actions and assertions in this session.',
+        save: 'Generate and save the recorded script for this step.',
+        deleteAction: 'Remove this recorded action or assertion from the script.',
+      },
+      status: {
+        idle: 'idle',
+        ready: 'ready',
+        recording: 'recording',
+        stopped: 'stopped',
+        generating: 'generating',
+        uploading: 'uploading',
+        committing: 'committing',
+      },
     },
   },
   'zh-CN': {
@@ -94,6 +162,40 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       windowTitle: '录制工具',
       recorderPlaceholderTitle: '录制模式暂未开放',
       recorderPlaceholderBody: '这里是录制回放模组的预留入口。当前选择器模式仍可正常使用。',
+      record: '操作',
+      stop: '停止',
+      assertVisible: '可见性',
+      assertText: '文本',
+      assertValue: '值',
+      assertAria: 'ARIA',
+      clear: '清空',
+      save: '保存',
+      noLaunchContext: '没有启动上下文',
+      noRecordedActionsYet: '还没有录制任何操作',
+      recordAtLeastOneActionOrAssertion: '保存前请至少录制一个操作或断言。',
+      saveFailed: '录制保存失败。',
+      saved: recordingId => `已保存 ${recordingId ?? ''}`.trim(),
+      countSummary: (actionCount, assertionCount) => `${actionCount} 个操作，${assertionCount} 个断言`,
+      tooltip: {
+        record: '录制点击、输入、选择、导航等页面行为。',
+        stop: '停止继续录制新的浏览器操作。',
+        assertVisible: '选择页面元素，并录制“该元素应该可见”的断言。',
+        assertText: '选择页面元素，并录制它当前文本内容的断言。',
+        assertValue: '选择表单控件，并录制它当前 value 的断言。',
+        assertAria: '选择页面区域，并录制它无障碍语义结构的 ARIA snapshot 断言。',
+        clear: '清空当前会话里已经录制的所有操作和断言。',
+        save: '为当前步骤生成并保存录制脚本。',
+        deleteAction: '从脚本中移除这条已录制的操作或断言。',
+      },
+      status: {
+        idle: '空闲',
+        ready: '就绪',
+        recording: '录制中',
+        stopped: '已停止',
+        generating: '生成中',
+        uploading: '上传中',
+        committing: '提交中',
+      },
     },
   },
   'zh-TW': {
@@ -118,6 +220,40 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       windowTitle: '錄製工具',
       recorderPlaceholderTitle: '錄製模式尚未開放',
       recorderPlaceholderBody: '這裡是錄製回放模組的預留入口。現在選擇器模式仍可正常使用。',
+      record: '操作',
+      stop: '停止',
+      assertVisible: '可見性',
+      assertText: '文字',
+      assertValue: '值',
+      assertAria: 'ARIA',
+      clear: '清空',
+      save: '儲存',
+      noLaunchContext: '沒有啟動上下文',
+      noRecordedActionsYet: '尚未錄製任何操作',
+      recordAtLeastOneActionOrAssertion: '儲存前請至少錄製一個操作或斷言。',
+      saveFailed: '錄製儲存失敗。',
+      saved: recordingId => `已儲存 ${recordingId ?? ''}`.trim(),
+      countSummary: (actionCount, assertionCount) => `${actionCount} 個操作，${assertionCount} 個斷言`,
+      tooltip: {
+        record: '錄製點擊、輸入、選擇、導覽等頁面行為。',
+        stop: '停止繼續錄製新的瀏覽器操作。',
+        assertVisible: '選取頁面元素，並錄製「該元素應可見」的斷言。',
+        assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
+        assertValue: '選取表單控制項，並錄製它目前 value 的斷言。',
+        assertAria: '選取頁面區域，並錄製它無障礙語意結構的 ARIA snapshot 斷言。',
+        clear: '清空目前工作階段已錄製的所有操作和斷言。',
+        save: '為目前步驟生成並儲存錄製腳本。',
+        deleteAction: '從腳本中移除這條已錄製的操作或斷言。',
+      },
+      status: {
+        idle: '閒置',
+        ready: '就緒',
+        recording: '錄製中',
+        stopped: '已停止',
+        generating: '生成中',
+        uploading: '上傳中',
+        committing: '提交中',
+      },
     },
   },
   'ja-JP': {
@@ -142,6 +278,40 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       windowTitle: 'レコーダーツール',
       recorderPlaceholderTitle: 'レコーダーモードはまだ利用できません',
       recorderPlaceholderBody: 'この authoring mode は recorded step replay 用の予約入口です。セレクターモードは引き続き利用できます。',
+      record: '操作',
+      stop: '停止',
+      assertVisible: '表示',
+      assertText: 'テキスト',
+      assertValue: '値',
+      assertAria: 'ARIA',
+      clear: 'クリア',
+      save: '保存',
+      noLaunchContext: '起動コンテキストがありません',
+      noRecordedActionsYet: '録画された操作はまだありません',
+      recordAtLeastOneActionOrAssertion: '保存する前に、操作またはアサーションを少なくとも1つ録画してください。',
+      saveFailed: '録画の保存に失敗しました。',
+      saved: recordingId => `保存済み ${recordingId ?? ''}`.trim(),
+      countSummary: (actionCount, assertionCount) => `${actionCount} 件の操作、${assertionCount} 件のアサーション`,
+      tooltip: {
+        record: 'クリック、入力、選択、ナビゲーションなどのページ操作を録画します。',
+        stop: '新しいブラウザー操作の録画を停止します。',
+        assertVisible: '要素を選択し、その要素が表示されていることを確認するアサーションを録画します。',
+        assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',
+        assertValue: 'フォームコントロールを選択し、現在の value を確認するアサーションを録画します。',
+        assertAria: '領域を選択し、アクセシビリティ構造の ARIA snapshot アサーションを録画します。',
+        clear: 'このセッションで録画済みの操作とアサーションをすべてクリアします。',
+        save: 'このステップ用の録画スクリプトを生成して保存します。',
+        deleteAction: 'この録画済みの操作またはアサーションをスクリプトから削除します。',
+      },
+      status: {
+        idle: '待機中',
+        ready: '準備完了',
+        recording: '録画中',
+        stopped: '停止済み',
+        generating: '生成中',
+        uploading: 'アップロード中',
+        committing: 'コミット中',
+      },
     },
   },
 };

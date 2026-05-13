@@ -55,7 +55,7 @@ import type { RegisteredListener } from '@utils/eventsHelper';
 const recorderSymbol = Symbol('recorderSymbol');
 
 type BindingSource = { frame: Frame, page: Page };
-type RecorderParams = channels.BrowserContextEnableRecorderParams & { hideToolbar?: boolean };
+type RecorderParams = channels.BrowserContextEnableRecorderParams & { hideToolbar?: boolean, stickyAssertionMode?: boolean, hideActionHoverHighlight?: boolean };
 
 export const RecorderEvent = {
   PausedStateChanged: 'pausedStateChanged',
@@ -249,7 +249,12 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
       await this._context.exposeBinding(progress, '__pw_recorderRecordAction', false,
           (source: BindingSource, action: actions.Action) => this._recordAction(progress, source.frame, action));
 
-      await progress.race(this._context.extendInjectedScript(rawRecorderSource.source, { recorderMode: this._recorderMode, hideToolbar: !!this._params.hideToolbar }));
+      await progress.race(this._context.extendInjectedScript(rawRecorderSource.source, {
+        recorderMode: this._recorderMode,
+        hideToolbar: !!this._params.hideToolbar,
+        stickyAssertionMode: !!this._params.stickyAssertionMode,
+        hideActionHoverHighlight: !!this._params.hideActionHoverHighlight,
+      }));
     });
 
     if (this._debugger.isPaused())

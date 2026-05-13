@@ -346,6 +346,8 @@ export async function codegen(options: Options & { target: string, output?: stri
     handleSIGINT: false,
     hideInspector: !authoringModeConfig,
     hideToolbar: !!authoringModeConfig,
+    stickyAssertionMode: authoringModeConfig?.mode === 'recorder',
+    hideActionHoverHighlight: authoringModeConfig?.mode === 'recorder',
   });
   await openPage(context, url);
   donePromise.resolve();

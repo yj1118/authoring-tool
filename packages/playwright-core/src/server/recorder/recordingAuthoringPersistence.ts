@@ -39,7 +39,7 @@ function normalizeHeaders(value: unknown): Record<string, string> | undefined {
 }
 
 function readLaunchContextFromEnv(): RecordingLaunchContext | null {
-  const raw = normalizeOptionalString(process.env.TEST_BOT_RECORDING_LAUNCH_PAYLOAD_JSON);
+  const raw = normalizeOptionalString(process.env.AUTHORING_TOOL_RECORDING_LAUNCH_PAYLOAD_JSON);
   if (!raw)
     return null;
 
@@ -64,7 +64,7 @@ function readLaunchContextFromEnv(): RecordingLaunchContext | null {
     startUrl,
     source: normalizeOptionalString(parsed.source) ?? 'client.manual',
     moduleKind: normalizeOptionalString(parsed.moduleKind) ?? 'manual.replay',
-    clientBaseUrl: normalizeOptionalString(parsed.clientBaseUrl) ?? normalizeOptionalString(process.env.TEST_BOT_CLIENT_BASE_URL),
+    clientBaseUrl: normalizeOptionalString(parsed.clientBaseUrl) ?? normalizeOptionalString(process.env.AUTHORING_TOOL_CLIENT_BASE_URL),
     orchestratorBaseUrl: normalizeOptionalString(parsed.orchestratorBaseUrl),
     orchestratorHeaders: normalizeHeaders(parsed.orchestratorHeaders),
     recordingBridgeBaseUrl: normalizeOptionalString(parsed.recordingBridgeBaseUrl),
