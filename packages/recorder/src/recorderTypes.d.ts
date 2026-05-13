@@ -110,10 +110,48 @@ export type SelectorAuthoringDiagnostic = {
   severity: 'warning' | 'error';
 };
 
+export type RecordingLaunchContext = {
+  caseId: string;
+  stepId: string;
+  source: string;
+  moduleKind: string;
+  startUrl: string;
+  clientBaseUrl?: string;
+  orchestratorBaseUrl?: string;
+  orchestratorHeaders?: Record<string, string>;
+  recordingBridgeBaseUrl?: string;
+  recordingBridgeToken?: string;
+};
+
+export type RecordingSaveRequest = {
+  scriptText: string;
+  actionCount: number;
+  assertionCount: number;
+  sourceId: string;
+  startUrl?: string;
+  timeoutMs?: number;
+};
+
+export type RecordingSaveResult = {
+  ok: boolean;
+  recordingId?: string;
+  caseId?: string;
+  stepId?: string;
+  status?: string;
+  manifestSchema?: string;
+  manifestLogicalPath?: string;
+  scriptLogicalPath?: string;
+  scriptChecksum?: string;
+  manifestChecksum?: string;
+  scriptSizeBytes?: number;
+  savedAt?: string;
+  message?: string;
+};
+
 declare global {
   interface Window {
     playwrightSourcesEchoForTest: Source[];
-    sendCommand(data: { method: string; params?: any }): Promise<void>;
+    sendCommand(data: { method: string; params?: any }): Promise<any>;
     dispatch(data: { method: string; params?: any }): void;
   }
 }
@@ -128,6 +166,8 @@ export interface RecorderBackend {
   fileChanged(params: { fileId: string }): Promise<void>;
   clear(): Promise<void>;
   closeSelectorAuthoringSession(): Promise<void>;
+  getRecordingLaunchContext(): Promise<RecordingLaunchContext | null>;
+  saveRecording(params: RecordingSaveRequest): Promise<RecordingSaveResult>;
 }
 
 export interface RecorderFrontend {

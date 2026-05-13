@@ -34,6 +34,7 @@ import { resolveAuthoringLocaleFromEnv, resolveAuthoringModeConfigFromEnv, type 
 import { computeSelectorAuthoringDockLayout as computeSelectorAuthoringDockLayoutFromMetrics, normalizeSelectorAuthoringScreenMetrics } from './selectorAuthoringGeometry';
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
 import { AuthoringSingleton } from './selectorAuthoringSingleton';
+import { getRecordingLaunchContext, saveRecordingThroughClient } from './recordingAuthoringPersistence';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
@@ -192,6 +193,12 @@ export class RecorderApp {
       },
       closeSelectorAuthoringSession: async () => {
         await inspectedContext.close(nullProgress, { reason: 'Selector authoring finished from tool window' });
+      },
+      getRecordingLaunchContext: async () => {
+        return getRecordingLaunchContext();
+      },
+      saveRecording: async params => {
+        return await saveRecordingThroughClient(params);
       },
     };
 
