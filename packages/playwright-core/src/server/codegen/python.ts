@@ -120,6 +120,8 @@ export class PythonLanguageGenerator implements LanguageGenerator {
         return `${subject}.goto(${quote(action.url)})`;
       case 'select':
         return `${subject}.${this._asLocator(action.selector)}.select_option(${formatValue(action.options.length === 1 ? action.options[0] : action.options)})`;
+      case 'scroll':
+        return `${subject}.${this._asLocator(action.selector)}.evaluate(${quote(scrollEvaluateExpression())}, ${formatValue({ x: action.x, y: action.y })})`;
       case 'assertText':
         return `expect(${subject}.${this._asLocator(action.selector)}).${action.substring ? 'to_contain_text' : 'to_have_text'}(${quote(action.text)})`;
       case 'assertChecked':
@@ -230,6 +232,10 @@ function formatValue(value: any): string {
   if (typeof value === 'object')
     return JSON.stringify(value);
   return String(value);
+}
+
+function scrollEvaluateExpression(): string {
+  return `(element, position) => { const targetDocument = element.ownerDocument; if (element === targetDocument.scrollingElement || element === targetDocument.documentElement || element === targetDocument.body) targetDocument.defaultView?.scrollTo(position.x, position.y); else element.scrollTo(position.x, position.y); }`;
 }
 
 function formatOptions(value: any, hasArguments: boolean, asDict?: boolean): string {

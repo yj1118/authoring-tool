@@ -348,6 +348,7 @@ export async function codegen(options: Options & { target: string, output?: stri
     hideToolbar: !!authoringModeConfig,
     stickyAssertionMode: authoringModeConfig?.mode === 'recorder',
     hideActionHoverHighlight: authoringModeConfig?.mode === 'recorder',
+    recordScrollActions: authoringModeConfig?.mode === 'recorder',
   });
   await openPage(context, url);
   donePromise.resolve();

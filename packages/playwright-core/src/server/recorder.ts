@@ -55,7 +55,12 @@ import type { RegisteredListener } from '@utils/eventsHelper';
 const recorderSymbol = Symbol('recorderSymbol');
 
 type BindingSource = { frame: Frame, page: Page };
-type RecorderParams = channels.BrowserContextEnableRecorderParams & { hideToolbar?: boolean, stickyAssertionMode?: boolean, hideActionHoverHighlight?: boolean };
+type RecorderParams = channels.BrowserContextEnableRecorderParams & {
+  hideToolbar?: boolean,
+  stickyAssertionMode?: boolean,
+  hideActionHoverHighlight?: boolean,
+  recordScrollActions?: boolean,
+};
 
 export const RecorderEvent = {
   PausedStateChanged: 'pausedStateChanged',
@@ -254,6 +259,7 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
         hideToolbar: !!this._params.hideToolbar,
         stickyAssertionMode: !!this._params.stickyAssertionMode,
         hideActionHoverHighlight: !!this._params.hideActionHoverHighlight,
+        recordScrollActions: !!this._params.recordScrollActions,
       }));
     });
 
@@ -279,11 +285,15 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
   async setMode(mode: Mode) {
     if (this._mode === mode)
       return;
+    const wasRecording = this._isRecording();
+    const willRecord = isRecordingMode(mode);
+    if (wasRecording && !willRecord)
+      await this._flushPendingInjectedActions();
     this._highlightedElement = {};
     this._mode = mode;
     this.emit(RecorderEvent.ModeChanged, this._mode);
-    this._setEnabled(this._isRecording());
-    this._debugger.setMuted(this._isRecording());
+    this._setEnabled(willRecord);
+    this._debugger.setMuted(willRecord);
     if (this._mode !== 'none' && this._mode !== 'standby') {
       let pageToFocus = this._pickLocatorPage;
       if (!pageToFocus && this._context.pages().length === 1)
@@ -492,7 +502,12 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
   }
 
   private _isRecording() {
-    return ['recording', 'assertingText', 'assertingVisibility', 'assertingValue', 'assertingSnapshot'].includes(this._mode);
+    return isRecordingMode(this._mode);
+  }
+
+  private async _flushPendingInjectedActions() {
+    await Promise.all(this._context.pages().map(
+        page => page.safeNonStallingEvaluateInAllFrames('window.__pw_recorderFlushPendingActions?.()', 'main').catch(() => {})));
   }
 
   private _readSource(fileName: string): string {
@@ -631,6 +646,10 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
 
 function isScreenshotCommand(metadata: CallMetadata) {
   return metadata.method.toLowerCase().includes('screenshot');
+}
+
+function isRecordingMode(mode: Mode) {
+  return ['recording', 'assertingText', 'assertingVisibility', 'assertingValue', 'assertingSnapshot'].includes(mode);
 }
 
 function languageForFile(file: string): Language {

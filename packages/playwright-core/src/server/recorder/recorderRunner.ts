@@ -91,6 +91,17 @@ async function performActionImpl(progress: Progress, mainFrame: Frame, actionInC
     return;
   }
 
+  if (action.name === 'scroll') {
+    await mainFrame.evalOnSelector(progress, selector, true, `(element, position) => {
+      const targetDocument = element.ownerDocument;
+      if (element === targetDocument.scrollingElement || element === targetDocument.documentElement || element === targetDocument.body)
+        targetDocument.defaultView?.scrollTo(position.x, position.y);
+      else
+        element.scrollTo(position.x, position.y);
+    }`, true, { x: action.x, y: action.y });
+    return;
+  }
+
   if (action.name === 'assertChecked') {
     await mainFrame.expect(progress, selector, {
       selector,

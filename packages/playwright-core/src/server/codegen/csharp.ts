@@ -151,6 +151,8 @@ export class CSharpLanguageGenerator implements LanguageGenerator {
         return `await ${subject}.GotoAsync(${quote(action.url)});`;
       case 'select':
         return `await ${subject}.${this._asLocator(action.selector)}.SelectOptionAsync(${formatObject(action.options)});`;
+      case 'scroll':
+        return `await ${subject}.${this._asLocator(action.selector)}.EvaluateAsync(${quote(scrollEvaluateExpression())}, new { x = ${action.x}, y = ${action.y} });`;
       case 'assertText':
         return `await Expect(${subject}.${this._asLocator(action.selector)}).${action.substring ? 'ToContainTextAsync' : 'ToHaveTextAsync'}(${quote(action.text)});`;
       case 'assertChecked':
@@ -296,6 +298,10 @@ function formatContextOptions(contextOptions: BrowserContextOptions, deviceName:
   // NOTE: In csharp there is no easy way to merge options, so we just expand everything.
   delete (options as any)['defaultBrowserType'];
   return formatObject(options, '    ');
+}
+
+function scrollEvaluateExpression(): string {
+  return `(element, position) => { const targetDocument = element.ownerDocument; if (element === targetDocument.scrollingElement || element === targetDocument.documentElement || element === targetDocument.body) targetDocument.defaultView?.scrollTo(position.x, position.y); else element.scrollTo(position.x, position.y); }`;
 }
 
 class CSharpFormatter {

@@ -33,6 +33,7 @@ type RecorderOptions = {
   hideToolbar?: boolean;
   stickyAssertionMode?: boolean;
   hideActionHoverHighlight?: boolean;
+  recordScrollActions?: boolean;
 };
 
 const HighlightColors = {
@@ -72,6 +73,7 @@ interface RecorderTool {
   onMouseLeave?(event: MouseEvent): void;
   onFocus?(event: Event): void;
   onScroll?(event: Event): void;
+  flushPendingActions?(): Promise<void> | void;
 }
 
 class NoneTool implements RecorderTool {
@@ -224,6 +226,7 @@ class RecordActionTool implements RecorderTool {
   private _activeModel: HighlightModelWithSelector | null = null;
   private _expectProgrammaticKeyUp = false;
   private _pendingClickAction: { action: actions.ClickAction, timeout: number } | undefined;
+  private _pendingScrollAction: { target: HTMLElement, timeout: number } | undefined;
   private _observer: MutationObserver | null = null;
   private _dialog: Dialog;
 
@@ -256,12 +259,14 @@ class RecordActionTool implements RecorderTool {
   }
 
   uninstall() {
+    void this._flushPendingScrollAction();
     this._observer?.disconnect();
     this._observer = null;
     this._hoveredModel = null;
     this._hoveredElement = null;
     this._activeModel = null;
     this._expectProgrammaticKeyUp = false;
+    this._pendingScrollAction = undefined;
     this._dialog.close();
   }
 
@@ -540,6 +545,52 @@ class RecordActionTool implements RecorderTool {
     if (this._dialog.isShowing())
       return;
     this._resetHoveredModel();
+    if (!this._recorder.recordScrollActions())
+      return;
+    if (this._performingActions.size)
+      return;
+    const target = scrollTargetForEvent(event, this._recorder.document);
+    if (!target)
+      return;
+    this._scheduleScrollAction(target);
+  }
+
+  flushPendingActions() {
+    return this._flushPendingScrollAction();
+  }
+
+  private _scheduleScrollAction(target: HTMLElement) {
+    const builtins = this._recorder.injectedScript.utils.builtins;
+    if (this._pendingScrollAction?.target !== target)
+      this._flushPendingScrollAction();
+    if (this._pendingScrollAction)
+      builtins.clearTimeout(this._pendingScrollAction.timeout);
+    this._pendingScrollAction = {
+      target,
+      timeout: builtins.setTimeout(() => void this._flushPendingScrollAction(), 350),
+    };
+  }
+
+  private async _flushPendingScrollAction() {
+    const pending = this._pendingScrollAction;
+    if (!pending)
+      return;
+    this._recorder.injectedScript.utils.builtins.clearTimeout(pending.timeout);
+    this._pendingScrollAction = undefined;
+    if (!pending.target.isConnected)
+      return;
+    const position = scrollPositionForElement(pending.target);
+    const generated = this._recorder.injectedScript.generateSelector(pending.target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    if (!generated.selector)
+      return;
+    await this._recorder.recordAction({
+      name: 'scroll',
+      selector: generated.selector,
+      signals: [],
+      x: position.x,
+      y: position.y,
+    });
+    this._reportPerformedActionForTests();
   }
 
   private _showActionListDialog(model: HighlightModelWithSelector, event: MouseEvent) {
@@ -699,7 +750,12 @@ class RecordActionTool implements RecorderTool {
   }
 
   private _recordAction(action: actions.Action) {
-    void this._recorder.recordAction(action).then(() => this._reportPerformedActionForTests());
+    void (async () => {
+      if (action.name !== 'scroll')
+        await this._flushPendingScrollAction().catch(() => {});
+      await this._recorder.recordAction(action);
+      this._reportPerformedActionForTests();
+    })();
   }
 
   private _performAction(action: actions.PerformOnRecordAction) {
@@ -707,7 +763,10 @@ class RecordActionTool implements RecorderTool {
 
     this._performingActions.add(action);
 
-    void this._recorder.performAction(action).finally(() => {
+    void (async () => {
+      await this._flushPendingScrollAction().catch(() => {});
+      await this._recorder.performAction(action);
+    })().finally(() => {
       this._performingActions.delete(action);
       // If that was a keyboard action, it similarly requires new selectors for active model.
       this._onFocus(false);
@@ -1342,6 +1401,7 @@ export class Recorder {
   private _hoveredInspectedModel: HighlightModel | null = null;
   private _stickyAssertionMode: boolean;
   private _hideActionHoverHighlight: boolean;
+  private _recordScrollActions: boolean;
   state: UIState = {
     mode: 'none',
     testIdAttributeName: 'data-testid',
@@ -1357,6 +1417,7 @@ export class Recorder {
     this.highlight = injectedScript.createHighlight();
     this._stickyAssertionMode = !!options?.stickyAssertionMode;
     this._hideActionHoverHighlight = !!options?.hideActionHoverHighlight;
+    this._recordScrollActions = !!options?.recordScrollActions;
     this._tools = {
       'none': new NoneTool(),
       'standby': new NoneTool(),
@@ -1673,6 +1734,14 @@ export class Recorder {
     return this._hideActionHoverHighlight;
   }
 
+  recordScrollActions(): boolean {
+    return this._recordScrollActions;
+  }
+
+  async flushPendingActions() {
+    await this._currentTool.flushPendingActions?.();
+  }
+
   private _captureAutoExpectSnapshot() {
     const documentElement = this.injectedScript.document.documentElement;
     return documentElement ? this.injectedScript.utils.generateAriaTree(documentElement, { mode: 'autoexpect' }) : undefined;
@@ -1912,6 +1981,37 @@ function isRangeInput(node: Node | null): node is HTMLInputElement {
     return false;
   const inputElement = node as HTMLInputElement;
   return inputElement.type.toLowerCase() === 'range';
+}
+
+function scrollTargetForEvent(event: Event, document: Document): HTMLElement | null {
+  const eventTarget = event.target;
+  if (!eventTarget)
+    return null;
+  if (eventTarget === document || eventTarget === document.defaultView)
+    return document.scrollingElement as HTMLElement || document.documentElement;
+  const node = eventTarget as Node;
+  if (node.nodeType === Node.DOCUMENT_NODE) {
+    const targetDocument = node as Document;
+    return targetDocument.scrollingElement as HTMLElement || targetDocument.documentElement;
+  }
+  if (node.nodeType === Node.ELEMENT_NODE)
+    return node as HTMLElement;
+  return null;
+}
+
+function scrollPositionForElement(element: HTMLElement): Point {
+  const targetDocument = element.ownerDocument;
+  if (element === targetDocument.scrollingElement || element === targetDocument.documentElement || element === targetDocument.body) {
+    const targetWindow = targetDocument.defaultView;
+    return {
+      x: targetWindow?.scrollX ?? element.scrollLeft,
+      y: targetWindow?.scrollY ?? element.scrollTop,
+    };
+  }
+  return {
+    x: element.scrollLeft,
+    y: element.scrollTop,
+  };
 }
 
 function addEventListener(target: EventTarget, eventName: string, listener: EventListener, useCapture?: boolean): () => void {

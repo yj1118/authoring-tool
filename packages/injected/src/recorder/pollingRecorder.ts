@@ -26,6 +26,7 @@ type RecorderOptions = {
   hideToolbar?: boolean;
   stickyAssertionMode?: boolean;
   hideActionHoverHighlight?: boolean;
+  recordScrollActions?: boolean;
 };
 
 interface Embedder {
@@ -36,6 +37,7 @@ interface Embedder {
   __pw_recorderSetMode(mode: Mode): Promise<void>;
   __pw_recorderSetOverlayState(state: OverlayState): Promise<void>;
   __pw_recorderCloseBrowsers(): Promise<void>;
+  __pw_recorderFlushPendingActions(): Promise<void>;
   __pw_refreshOverlay(): void;
 }
 
@@ -56,6 +58,7 @@ export class PollingRecorder implements RecorderDelegate {
       this._pollRecorderMode().catch(e => console.log(e)); // eslint-disable-line no-console
     };
     this._embedder.__pw_refreshOverlay = refreshOverlay;
+    this._embedder.__pw_recorderFlushPendingActions = () => this._recorder.flushPendingActions();
     refreshOverlay();
   }
 

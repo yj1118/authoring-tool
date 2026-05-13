@@ -69,6 +69,7 @@ const copyFiles = [];
 const watchMode = process.argv.slice(2).includes('--watch');
 const withSourceMaps = watchMode;
 const disableInstall = process.argv.slice(2).includes('--disable-install');
+const authoringRuntimeMode = process.argv.slice(2).includes('--authoring-runtime');
 const bundleFilterIndex = process.argv.indexOf('--bundle');
 const bundleFilter = bundleFilterIndex !== -1 ? process.argv[bundleFilterIndex + 1] : undefined;
 const ROOT = path.join(__dirname, '..', '..');
@@ -230,6 +231,65 @@ async function runBuild() {
     await step.run();
   for (const onChange of onChanges)
     runOnChangeStep(onChange);
+}
+
+async function runCopyFilesOnce() {
+  for (const { files, from, to, ignored } of copyFiles) {
+    const watcher = chokidar.watch([filePath(files)], {
+      ignored
+    });
+    watcher.on('add', file => {
+      copyFile(file, from, to);
+    });
+    await new Promise(x => watcher.once('ready', x));
+    watcher.close();
+  }
+}
+
+async function runAuthoringRuntimeBuild() {
+  if (watchMode)
+    throw new Error('--authoring-runtime does not support --watch');
+
+  await runCopyFilesOnce();
+
+  const utilsBundleStep = bundleSteps[bundles.findIndex(b => b.modulePath === 'packages/playwright-core/bundles/utils')];
+  if (!utilsBundleStep)
+    throw new Error('playwright-core utils bundle step not found');
+
+  const steps = [
+    new ProgramStep({
+      command: 'node',
+      args: ['utils/generate_clip_paths.js'],
+      shell: true,
+    }),
+    new ProgramStep({
+      command: 'node',
+      args: ['utils/generate_injected.js'],
+      shell: true,
+    }),
+    new ProgramStep({
+      command: 'node',
+      args: ['utils/generate_channels.js'],
+      shell: true,
+    }),
+    utilsBundleStep,
+    playwrightCoreEntryPointsStep,
+    playwrightCoreBundleStep,
+    assertCoreBundleStep,
+    new ProgramStep({
+      command: 'npx',
+      args: [
+        'vite',
+        'build',
+        '--clearScreen=false',
+      ],
+      shell: true,
+      cwd: path.join(__dirname, '..', '..', 'packages', 'recorder'),
+    }),
+  ];
+
+  for (const step of steps)
+    await step.run();
 }
 
 /**
@@ -651,7 +711,7 @@ for (const pkg of workspace.packages()) {
 }
 
 // Build playwright-core exported entry points.
-steps.push(new EsbuildStep({
+const playwrightCoreEntryPointsStep = new EsbuildStep({
   entryPoints: [
     // Performance analysis tool.
     filePath('packages/playwright-core/src/bootstrap.ts'),
@@ -676,12 +736,13 @@ steps.push(new EsbuildStep({
   platform: 'node',
   format: 'cjs',
   plugins: [dynamicImportToRequirePlugin],
-}));
+});
+steps.push(playwrightCoreEntryPointsStep);
 
 const playwrightCoreSrc = filePath('packages/playwright-core/src');
 
 // Build playwright-core as a single bundle.
-steps.push(new EsbuildStep({
+const playwrightCoreBundleStep = new EsbuildStep({
   bundle: true,
   entryPoints: [filePath('packages/playwright-core/src/coreBundle.ts')],
   outfile: filePath('packages/playwright-core/lib/coreBundle.js'),
@@ -701,7 +762,8 @@ steps.push(new EsbuildStep({
     'mitt',
   ],
   plugins: [dynamicImportToRequirePlugin],
-}, [playwrightCoreSrc]));
+}, [playwrightCoreSrc]);
+steps.push(playwrightCoreBundleStep);
 
 function assertCoreBundleHasNoNodeModules() {
   const bundlePath = filePath('packages/playwright-core/lib/coreBundle.js');
@@ -724,7 +786,8 @@ function assertCoreBundleHasNoNodeModules() {
   console.log('==== coreBundle.js: no node_modules/ references');
 }
 
-steps.push(new CustomCallbackStep(assertCoreBundleHasNoNodeModules));
+const assertCoreBundleStep = new CustomCallbackStep(assertCoreBundleHasNoNodeModules);
+steps.push(assertCoreBundleStep);
 
 // playwright/lib/transform/esmLoader.js — bundled ESM loader registered by
 // common/esmLoaderHost.ts via node:module register. Same externalization
@@ -1075,4 +1138,4 @@ process.on('SIGINT', () => {
 });
 
 
-bundleFilter ? runBundleOnly(bundleFilter) : watchMode ? runWatch() : runBuild();
+authoringRuntimeMode ? runAuthoringRuntimeBuild() : bundleFilter ? runBundleOnly(bundleFilter) : watchMode ? runWatch() : runBuild();

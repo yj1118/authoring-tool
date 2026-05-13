@@ -97,6 +97,8 @@ export function shouldMergeAction(action: actions.ActionInContext, lastAction: a
       return isSameAction(action, lastAction);
     case 'click':
       return isSameAction(action, lastAction) && isSameSelector(action, lastAction) && isShortlyAfter(action, lastAction) && action.action.clickCount > (lastAction.action as actions.ClickAction).clickCount;
+    case 'scroll':
+      return isSameAction(action, lastAction) && isSameSelector(action, lastAction) && isShortlyAfter(action, lastAction);
   }
   return false;
 }

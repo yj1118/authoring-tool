@@ -1971,6 +1971,7 @@ export type BrowserContextEnableRecorderParams = {
   hideToolbar?: boolean,
   stickyAssertionMode?: boolean,
   hideActionHoverHighlight?: boolean,
+  recordScrollActions?: boolean,
 };
 export type BrowserContextEnableRecorderOptions = {
   language?: string,
@@ -1989,6 +1990,7 @@ export type BrowserContextEnableRecorderOptions = {
   hideToolbar?: boolean,
   stickyAssertionMode?: boolean,
   hideActionHoverHighlight?: boolean,
+  recordScrollActions?: boolean,
 };
 export type BrowserContextEnableRecorderResult = void;
 export type BrowserContextDisableRecorderParams = {};

@@ -1431,6 +1431,7 @@ BrowserContext:
         hideToolbar: boolean?
         stickyAssertionMode: boolean?
         hideActionHoverHighlight: boolean?
+        recordScrollActions: boolean?
 
     disableRecorder:
       internal: true
