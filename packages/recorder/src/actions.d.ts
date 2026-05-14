@@ -27,6 +27,7 @@ export type ActionName =
   'press' |
   'select' |
   'scroll' |
+  'scrollIntoView' |
   'uncheck' |
   'setInputFiles' |
   'assertText' |
@@ -104,6 +105,10 @@ export type ScrollAction = ActionWithSelector & {
   y: number,
 };
 
+export type ScrollIntoViewAction = ActionWithSelector & {
+  name: 'scrollIntoView',
+};
+
 export type SetInputFilesAction = ActionWithSelector & {
   name: 'setInputFiles',
   files: string[],
@@ -134,7 +139,7 @@ export type AssertSnapshotAction = ActionWithSelector & {
   ariaSnapshot: string,
 };
 
-export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertVisibleAction | AssertSnapshotAction;
+export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertVisibleAction | AssertSnapshotAction;
 export type AssertAction = AssertCheckedAction | AssertValueAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
 export type PerformOnRecordAction = ClickAction | HoverAction | CheckAction | UncheckAction | PressAction | SelectAction;
 

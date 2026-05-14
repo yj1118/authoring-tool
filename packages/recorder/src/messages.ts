@@ -40,6 +40,7 @@ type RecorderAuthoringMessages = {
   recorderPlaceholderTitle: string;
   recorderPlaceholderBody: string;
   record: string;
+  locate: string;
   stop: string;
   assertVisible: string;
   assertText: string;
@@ -67,6 +68,7 @@ type RecorderAuthoringMessages = {
   };
   tooltip: {
     record: string;
+    locate: string;
     stop: string;
     assertVisible: string;
     assertText: string;
@@ -119,6 +121,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recorderPlaceholderTitle: 'Recorder mode is not available yet',
       recorderPlaceholderBody: 'This authoring mode is reserved for recorded step replay. Selector mode remains available.',
       record: 'Actions',
+      locate: 'Locate',
       stop: 'Stop',
       assertVisible: 'Visible',
       assertText: 'Text',
@@ -146,6 +149,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       tooltip: {
         record: 'Record browser actions such as clicks, typing, selections, and navigation.',
+        locate: 'Pick a target element and record scrollIntoViewIfNeeded so replay can bring it into view.',
         stop: 'Stop recording new browser interactions.',
         assertVisible: 'Pick an element and record an assertion that it should be visible.',
         assertText: 'Pick an element and record an assertion for its current text.',
@@ -191,6 +195,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recorderPlaceholderTitle: '录制模式暂未开放',
       recorderPlaceholderBody: '这里是录制回放模组的预留入口。当前选择器模式仍可正常使用。',
       record: '操作',
+      locate: '定位',
       stop: '停止',
       assertVisible: '可见性',
       assertText: '文本',
@@ -218,6 +223,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       tooltip: {
         record: '录制点击、输入、选择、导航等页面行为。',
+        locate: '选择目标元素，并录制 scrollIntoViewIfNeeded，让回放时自动将它带入可见区域。',
         stop: '停止继续录制新的浏览器操作。',
         assertVisible: '选择页面元素，并录制“该元素应该可见”的断言。',
         assertText: '选择页面元素，并录制它当前文本内容的断言。',
@@ -263,6 +269,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recorderPlaceholderTitle: '錄製模式尚未開放',
       recorderPlaceholderBody: '這裡是錄製回放模組的預留入口。現在選擇器模式仍可正常使用。',
       record: '操作',
+      locate: '定位',
       stop: '停止',
       assertVisible: '可見性',
       assertText: '文字',
@@ -290,6 +297,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       tooltip: {
         record: '錄製點擊、輸入、選擇、導覽等頁面行為。',
+        locate: '選擇目標元素，並錄製 scrollIntoViewIfNeeded，讓回放時自動將它帶入可見區域。',
         stop: '停止繼續錄製新的瀏覽器操作。',
         assertVisible: '選取頁面元素，並錄製「該元素應可見」的斷言。',
         assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
@@ -335,6 +343,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recorderPlaceholderTitle: 'レコーダーモードはまだ利用できません',
       recorderPlaceholderBody: 'この authoring mode は recorded step replay 用の予約入口です。セレクターモードは引き続き利用できます。',
       record: '操作',
+      locate: '位置合わせ',
       stop: '停止',
       assertVisible: '表示',
       assertText: 'テキスト',
@@ -362,6 +371,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       },
       tooltip: {
         record: 'クリック、入力、選択、ナビゲーションなどのページ操作を録画します。',
+        locate: '対象要素を選択し、再生時に表示領域へ入れる scrollIntoViewIfNeeded を録画します。',
         stop: '新しいブラウザー操作の録画を停止します。',
         assertVisible: '要素を選択し、その要素が表示されていることを確認するアサーションを録画します。',
         assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',

@@ -122,6 +122,8 @@ export class PythonLanguageGenerator implements LanguageGenerator {
         return `${subject}.${this._asLocator(action.selector)}.select_option(${formatValue(action.options.length === 1 ? action.options[0] : action.options)})`;
       case 'scroll':
         return `${subject}.${this._asLocator(action.selector)}.evaluate(${quote(scrollEvaluateExpression())}, ${formatValue({ x: action.x, y: action.y })})`;
+      case 'scrollIntoView':
+        return `${subject}.${this._asLocator(action.selector)}.scroll_into_view_if_needed()`;
       case 'assertText':
         return `expect(${subject}.${this._asLocator(action.selector)}).${action.substring ? 'to_contain_text' : 'to_have_text'}(${quote(action.text)})`;
       case 'assertChecked':

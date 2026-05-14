@@ -102,6 +102,14 @@ async function performActionImpl(progress: Progress, mainFrame: Frame, actionInC
     return;
   }
 
+  if (action.name === 'scrollIntoView') {
+    const handle = await mainFrame.waitForSelector(progress, selector, true, { state: 'attached', strict: true });
+    if (!handle)
+      throw new Error('Element was not found for scrollIntoView');
+    await handle.scrollIntoViewIfNeeded(progress);
+    return;
+  }
+
   if (action.name === 'assertChecked') {
     await mainFrame.expect(progress, selector, {
       selector,

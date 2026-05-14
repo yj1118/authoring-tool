@@ -28,6 +28,7 @@ import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorde
 import type { Language } from '@isomorphic/locatorGenerators';
 
 type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingValue' | 'assertingSnapshot';
+type InspectToolIntent = 'pickSelector' | 'assertVisible' | 'scrollIntoView';
 type RecorderOptions = {
   recorderMode?: 'default' | 'api';
   hideToolbar?: boolean;
@@ -38,6 +39,7 @@ type RecorderOptions = {
 
 function isRecorderCaptureMode(mode: Mode): boolean {
   return mode === 'recording'
+    || mode === 'scrollIntoView'
     || mode === 'assertingVisibility'
     || mode === 'assertingText'
     || mode === 'assertingValue'
@@ -162,11 +164,11 @@ class InspectTool implements RecorderTool {
   private _recorder: Recorder;
   private _hoveredModel: HighlightModel | null = null;
   private _hoveredElement: HTMLElement | null = null;
-  private _assertVisibility: boolean;
+  private _intent: InspectToolIntent;
 
-  constructor(recorder: Recorder, assertVisibility: boolean) {
+  constructor(recorder: Recorder, intent: InspectToolIntent) {
     this._recorder = recorder;
-    this._assertVisibility = assertVisibility;
+    this._intent = intent;
   }
 
   cursor() {
@@ -227,7 +229,7 @@ class InspectTool implements RecorderTool {
         selector: generated.selector,
         elements: generated.elements,
         tooltipText: generated.selector,
-        color: this._assertVisibility ? HighlightColors.assert : HighlightColors.single,
+        color: this._intent === 'pickSelector' ? HighlightColors.single : HighlightColors.assert,
       };
     }
 
@@ -253,7 +255,7 @@ class InspectTool implements RecorderTool {
   onKeyDown(event: KeyboardEvent) {
     consumeEvent(event);
     if (event.key === 'Escape') {
-      if (this._assertVisibility)
+      if (this._intent !== 'pickSelector')
         this._recorder.setMode('recording');
       else
         this._recorder.cancelSelectorPicking();
@@ -261,7 +263,7 @@ class InspectTool implements RecorderTool {
   }
 
   private _pickHoveredModel() {
-    if (this._assertVisibility && this._hoveredModel?.selector)
+    if ((this._intent === 'assertVisible' || this._intent === 'scrollIntoView') && this._hoveredModel?.selector)
       this._commit(this._hoveredModel.selector, this._hoveredModel);
     else if (this._hoveredModel?.selector)
       this._recorder.pickHoveredSelector(this._hoveredModel);
@@ -276,7 +278,7 @@ class InspectTool implements RecorderTool {
   }
 
   private _commit(selector: string, model: HighlightModel) {
-    if (this._assertVisibility) {
+    if (this._intent === 'assertVisible') {
       void this._recorder.recordAction({
         name: 'assertVisible',
         selector,
@@ -284,6 +286,14 @@ class InspectTool implements RecorderTool {
       });
       this._recorder.setMode(this._recorder.modeAfterAssertion('assertingVisibility'));
       this._recorder.overlay?.flashToolSucceeded('assertingVisibility');
+    } else if (this._intent === 'scrollIntoView') {
+      void this._recorder.recordAction({
+        name: 'scrollIntoView',
+        selector,
+        signals: [],
+      });
+      this._recorder.setMode(this._recorder.modeAfterTargetAction('scrollIntoView'));
+      this._recorder.overlay?.flashToolSucceeded('scrollIntoView');
     } else {
       this._recorder.elementPicked(selector, model);
     }
@@ -1332,6 +1342,7 @@ class Overlay {
           'standby': 'inspecting',
           'recording': 'recording-inspecting',
           'recording-inspecting': 'recording',
+          'scrollIntoView': 'recording-inspecting',
           'assertingText': 'recording-inspecting',
           'assertingVisibility': 'recording-inspecting',
           'assertingValue': 'recording-inspecting',
@@ -1367,7 +1378,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingSnapshot' | 'assertingValue') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingSnapshot' | 'assertingValue' | 'scrollIntoView') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
@@ -1459,11 +1470,12 @@ export class Recorder {
     this._tools = {
       'none': new NoneTool(),
       'standby': new NoneTool(),
-      'inspecting': new InspectTool(this, false),
+      'inspecting': new InspectTool(this, 'pickSelector'),
       'recording': options?.recorderMode === 'api' ? new JsonRecordActionTool(this) : new RecordActionTool(this),
-      'recording-inspecting': new InspectTool(this, false),
+      'recording-inspecting': new InspectTool(this, 'pickSelector'),
+      'scrollIntoView': new InspectTool(this, 'scrollIntoView'),
       'assertingText': new TextAssertionTool(this, 'text'),
-      'assertingVisibility': new InspectTool(this, true),
+      'assertingVisibility': new InspectTool(this, 'assertVisible'),
       'assertingValue': new TextAssertionTool(this, 'value'),
       'assertingSnapshot': new TextAssertionTool(this, 'snapshot'),
     };
@@ -1767,6 +1779,10 @@ export class Recorder {
 
   modeAfterAssertion(assertionMode: AssertionMode): Mode {
     return this._stickyAssertionMode ? assertionMode : 'recording';
+  }
+
+  modeAfterTargetAction(mode: Mode): Mode {
+    return this._stickyAssertionMode ? mode : 'recording';
   }
 
   hideActionHoverHighlight(): boolean {

@@ -26,6 +26,7 @@ export type Mode =
   | 'assertingText'
   | 'recording-inspecting'
   | 'standby'
+  | 'scrollIntoView'
   | 'assertingVisibility'
   | 'assertingValue'
   | 'assertingSnapshot';

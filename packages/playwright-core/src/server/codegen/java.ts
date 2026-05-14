@@ -131,6 +131,8 @@ export class JavaLanguageGenerator implements LanguageGenerator {
         return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.selectOption(${formatSelectOption(action.options.length === 1 ? action.options[0] : action.options)});`;
       case 'scroll':
         return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.evaluate(${quote(scrollEvaluateExpression())}, Map.of("x", ${action.x}, "y", ${action.y}));`;
+      case 'scrollIntoView':
+        return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.scrollIntoViewIfNeeded();`;
       case 'assertText':
         return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).${action.substring ? 'containsText' : 'hasText'}(${quote(action.text)});`;
       case 'assertChecked':

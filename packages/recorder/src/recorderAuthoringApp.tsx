@@ -180,6 +180,7 @@ export const RecorderAuthoringApp: React.FC = () => {
 
   const modeButtons = React.useMemo(() => [
     { mode: 'recording' as const, label: i18n.record, tooltip: i18n.tooltip.record },
+    { mode: 'scrollIntoView' as const, label: i18n.locate, tooltip: i18n.tooltip.locate },
     { mode: 'assertingVisibility' as const, label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
     { mode: 'assertingText' as const, label: i18n.assertText, tooltip: i18n.tooltip.assertText },
     { mode: 'assertingValue' as const, label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },

@@ -113,6 +113,8 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         return `await ${subject}.${this._asLocator(action.selector)}.selectOption(${formatObject(action.options.length === 1 ? action.options[0] : action.options)});`;
       case 'scroll':
         return `await ${subject}.${this._asLocator(action.selector)}.evaluate((element, position) => { const targetDocument = element.ownerDocument; if (element === targetDocument.scrollingElement || element === targetDocument.documentElement || element === targetDocument.body) targetDocument.defaultView?.scrollTo(position.x, position.y); else element.scrollTo(position.x, position.y); }, ${formatObject({ x: action.x, y: action.y })});`;
+      case 'scrollIntoView':
+        return `await ${subject}.${this._asLocator(action.selector)}.scrollIntoViewIfNeeded();`;
       case 'assertText':
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).${action.substring ? 'toContainText' : 'toHaveText'}(${quote(action.text)});`;
       case 'assertChecked':
