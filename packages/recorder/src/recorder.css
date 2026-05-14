@@ -34,6 +34,7 @@
   --sa-shadow-lg: 0 18px 40px rgba(16, 32, 51, 0.12);
   --sa-shadow-md: 0 10px 24px rgba(16, 32, 51, 0.08);
   --sa-shadow-sm: 0 4px 12px rgba(16, 32, 51, 0.06);
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: auto;
@@ -359,6 +360,90 @@
 
 .recorder-authoring-action-delete:active {
   transform: scale(0.94);
+}
+
+.recorder-authoring-action-delete:disabled {
+  cursor: default;
+  opacity: 0.35;
+  transform: none;
+}
+
+.recorder-saving-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(237, 243, 250, 0.76);
+  backdrop-filter: blur(3px);
+}
+
+.recorder-saving-dialog {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 26px;
+  border: 1px solid var(--sa-border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--sa-panel-bg), var(--sa-surface-bg));
+  box-shadow: var(--sa-shadow-lg);
+  color: var(--sa-text);
+  text-align: center;
+}
+
+.recorder-saving-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--sa-border);
+  border-top-color: var(--sa-accent);
+  border-radius: 50%;
+  animation: recorder-saving-spin 850ms linear infinite;
+}
+
+.recorder-saving-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.recorder-saving-stage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--sa-accent-soft);
+  color: var(--sa-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recorder-saving-description {
+  max-width: 30ch;
+  color: var(--sa-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@keyframes recorder-saving-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:root.dark-mode .recorder-saving-overlay {
+  background: rgba(17, 24, 39, 0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recorder-saving-spinner {
+    animation: none;
+  }
 }
 
 .selector-authoring-collection {

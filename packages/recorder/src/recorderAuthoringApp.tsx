@@ -51,6 +51,7 @@ export const RecorderAuthoringApp: React.FC = () => {
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
   const [status, setStatus] = React.useState<RecorderStatus>({ kind: 'idle' });
+  const saveInFlightRef = React.useRef(false);
 
   React.useEffect(() => {
     document.title = pageUrl ? `${i18n.windowTitle} - ${pageUrl}` : i18n.windowTitle;
@@ -132,7 +133,8 @@ export const RecorderAuthoringApp: React.FC = () => {
     }
   }, [editableSources]);
 
-  const canSave = generatedSummary.ok && !isSavingStatus(status);
+  const isSaving = isSavingStatus(status);
+  const canSave = generatedSummary.ok && !isSaving;
   const previewActions = React.useMemo(() => choosePreviewActions(sources, deletedActionKeys), [deletedActionKeys, sources]);
   const generatedSummaryMessage = generatedSummary.ok
     ? i18n.countSummary(generatedSummary.actionCount, generatedSummary.assertionCount)
@@ -141,6 +143,8 @@ export const RecorderAuthoringApp: React.FC = () => {
       : i18n.recordAtLeastOneActionOrAssertion;
 
   const setRecorderMode = React.useCallback((nextMode: Mode) => {
+    if (isSaving)
+      return;
     backend.setMode({ mode: nextMode }).catch(error => {
       const normalized = normalizeRecordingAuthoringError(
           error,
@@ -148,7 +152,7 @@ export const RecorderAuthoringApp: React.FC = () => {
       );
       setStatus(failedStatus(normalized.reasonCode, normalized.message));
     });
-  }, [backend]);
+  }, [backend, isSaving]);
 
   const modeButtons = React.useMemo(() => [
     { mode: 'recording' as const, label: i18n.record, tooltip: i18n.tooltip.record },
@@ -159,6 +163,8 @@ export const RecorderAuthoringApp: React.FC = () => {
   ], [i18n]);
 
   const clear = React.useCallback(() => {
+    if (isSaving)
+      return;
     backend.clear().then(() => {
       setSources([]);
       setDeletedActionKeys(new Set());
@@ -167,19 +173,32 @@ export const RecorderAuthoringApp: React.FC = () => {
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed);
       setStatus(failedStatus(normalized.reasonCode, normalized.message));
     });
-  }, [backend]);
+  }, [backend, isSaving]);
 
   const deleteAction = React.useCallback((key: string) => {
+    if (isSaving)
+      return;
     setDeletedActionKeys(current => {
       const next = new Set(current);
       next.add(key);
       return next;
     });
-  }, []);
+  }, [isSaving]);
 
   const save = React.useCallback(async () => {
+    if (saveInFlightRef.current)
+      return;
+    saveInFlightRef.current = true;
     try {
       setStatus({ kind: 'generating' });
+      if (isRecorderCaptureMode(mode)) {
+        try {
+          await backend.setMode({ mode: 'standby' });
+          setMode('standby');
+        } catch (error) {
+          throw normalizeRecordingAuthoringError(error, recordingReasonCodes.recordStopFailed);
+        }
+      }
       const generated = generateModuleHandlerScriptFromSources(editableSources);
       setStatus({ kind: 'uploading' });
       const result = await backend.saveRecording({
@@ -198,8 +217,10 @@ export const RecorderAuthoringApp: React.FC = () => {
     } catch (error) {
       const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.uploadFailed);
       setStatus(failedStatus(normalized.reasonCode, normalized.message));
+    } finally {
+      saveInFlightRef.current = false;
     }
-  }, [backend, editableSources, i18n.saveFailed, launchContext?.startUrl, pageUrl]);
+  }, [backend, editableSources, i18n.saveFailed, launchContext?.startUrl, mode, pageUrl]);
 
   const statusLabel = status.kind === 'saved'
     ? i18n.saved(status.result.recordingId)
@@ -209,12 +230,13 @@ export const RecorderAuthoringApp: React.FC = () => {
   const failureAdvice = status.kind === 'failed' ? buildFailureAdvice(status.reasonCode, status.message, i18n) : null;
 
   return <div className='recorder'>
-    <div className='recorder-authoring-main'>
+    <div className='recorder-authoring-main' aria-busy={isSaving}>
       <div className='recorder-authoring-toolbar'>
         {modeButtons.map(button => {
           const isActive = mode === button.mode;
           return <button
             className={`selector-authoring-secondary-button ${isActive ? 'toggled' : ''}`}
+            disabled={isSaving}
             key={button.mode}
             onClick={() => setRecorderMode(isActive ? 'standby' : button.mode)}
             title={isActive ? i18n.tooltip.stop : button.tooltip}
@@ -223,7 +245,7 @@ export const RecorderAuthoringApp: React.FC = () => {
             {isActive ? i18n.stop : button.label}
           </button>;
         })}
-        <button className='selector-authoring-secondary-button' disabled={!sources.length} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
+        <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
         <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
       </div>
 
@@ -244,6 +266,7 @@ export const RecorderAuthoringApp: React.FC = () => {
                 <button
                   aria-label={i18n.tooltip.deleteAction}
                   className='recorder-authoring-action-delete'
+                  disabled={isSaving}
                   onClick={() => deleteAction(action.key)}
                   title={i18n.tooltip.deleteAction}
                   type='button'
@@ -260,6 +283,14 @@ export const RecorderAuthoringApp: React.FC = () => {
         )}
       </div>
     </div>
+    {isSaving ? <div className='recorder-saving-overlay' role='status' aria-live='polite' aria-busy='true'>
+      <div className='recorder-saving-dialog'>
+        <div className='recorder-saving-spinner' aria-hidden='true' />
+        <div className='recorder-saving-title'>{i18n.savingOverlayTitle}</div>
+        <div className='recorder-saving-stage'>{statusLabel}</div>
+        <div className='recorder-saving-description'>{i18n.savingOverlayDescription}</div>
+      </div>
+    </div> : null}
   </div>;
 };
 

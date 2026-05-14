@@ -53,6 +53,8 @@ type RecorderAuthoringMessages = {
   recordAtLeastOneActionOrAssertion: string;
   saveFailed: string;
   saved: (recordingId?: string) => string;
+  savingOverlayTitle: string;
+  savingOverlayDescription: string;
   countSummary: (actionCount: number, assertionCount: number) => string;
   failureAdvice: {
     retrySave: string;
@@ -128,6 +130,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordAtLeastOneActionOrAssertion: 'Record at least one action or assertion before saving.',
       saveFailed: 'Recording save failed.',
       saved: recordingId => `Saved ${recordingId ?? ''}`.trim(),
+      savingOverlayTitle: 'Saving recording',
+      savingOverlayDescription: 'Please keep this window open while the recorded script is being saved.',
       countSummary: (actionCount, assertionCount) => `${actionCount} actions, ${assertionCount} assertions`,
       failureAdvice: {
         retrySave: 'Retry Save after the temporary issue is resolved.',
@@ -196,6 +200,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordAtLeastOneActionOrAssertion: '保存前请至少录制一个操作或断言。',
       saveFailed: '录制保存失败。',
       saved: recordingId => `已保存 ${recordingId ?? ''}`.trim(),
+      savingOverlayTitle: '正在保存录制',
+      savingOverlayDescription: '正在提交录制脚本，请保持窗口打开。',
       countSummary: (actionCount, assertionCount) => `${actionCount} 个操作，${assertionCount} 个断言`,
       failureAdvice: {
         retrySave: '临时问题恢复后，请重试保存。',
@@ -264,6 +270,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordAtLeastOneActionOrAssertion: '儲存前請至少錄製一個操作或斷言。',
       saveFailed: '錄製儲存失敗。',
       saved: recordingId => `已儲存 ${recordingId ?? ''}`.trim(),
+      savingOverlayTitle: '正在儲存錄製',
+      savingOverlayDescription: '正在提交錄製腳本，請保持視窗開啟。',
       countSummary: (actionCount, assertionCount) => `${actionCount} 個操作，${assertionCount} 個斷言`,
       failureAdvice: {
         retrySave: '暫時性問題恢復後，請重試儲存。',
@@ -332,6 +340,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordAtLeastOneActionOrAssertion: '保存する前に、操作またはアサーションを少なくとも1つ録画してください。',
       saveFailed: '録画の保存に失敗しました。',
       saved: recordingId => `保存済み ${recordingId ?? ''}`.trim(),
+      savingOverlayTitle: '録画を保存しています',
+      savingOverlayDescription: '録画スクリプトを送信しています。このウィンドウは開いたままにしてください。',
       countSummary: (actionCount, assertionCount) => `${actionCount} 件の操作、${assertionCount} 件のアサーション`,
       failureAdvice: {
         retrySave: '一時的な問題が解消したら、保存を再試行してください。',
