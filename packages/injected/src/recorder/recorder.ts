@@ -1440,6 +1440,7 @@ export class Recorder {
   private _positionActionRecorder: PositionActionRecorder;
   state: UIState = {
     mode: 'none',
+    positionActionRecordingEnabled: false,
     testIdAttributeName: 'data-testid',
     language: 'javascript',
     overlay: { offsetX: 0 },
@@ -1778,6 +1779,8 @@ export class Recorder {
 
   shouldRecordPositionActions(): boolean {
     if (!this._recordScrollActions)
+      return false;
+    if (!this.state.positionActionRecordingEnabled)
       return false;
     if (!isRecorderCaptureMode(this.state.mode))
       return false;

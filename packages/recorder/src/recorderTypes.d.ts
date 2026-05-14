@@ -53,6 +53,7 @@ export type OverlayState = {
 
 export type UIState = {
   mode: Mode;
+  positionActionRecordingEnabled: boolean;
   actionPoint?: Point;
   actionSelector?: string;
   ariaTemplate?: AriaTemplateNode;
@@ -159,6 +160,8 @@ declare global {
 
 export interface RecorderBackend {
   setMode(params: { mode: Mode }): Promise<void>;
+  setPositionActionRecordingEnabled(params: { enabled: boolean }): Promise<void>;
+  prepareRecordingSources(): Promise<Source[]>;
   setAutoExpect(params: { autoExpect: boolean }): Promise<void>;
   resume(): Promise<void>;
   pause(): Promise<void>;

@@ -275,6 +275,7 @@ export const InspectModeController: React.FunctionComponent<{
       const ariaTemplate = parsedSnapshot?.errors.length === 0 ? parsedSnapshot.fragment : undefined;
       recorder.setUIState({
         mode: isInspecting ? 'inspecting' : 'none',
+        positionActionRecordingEnabled: false,
         actionSelector,
         ariaTemplate,
         language: sdkLanguage,

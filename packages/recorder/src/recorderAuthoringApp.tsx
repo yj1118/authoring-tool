@@ -51,6 +51,7 @@ export const RecorderAuthoringApp: React.FC = () => {
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
   const [status, setStatus] = React.useState<RecorderStatus>({ kind: 'idle' });
+  const [positionActionRecordingEnabled, setPositionActionRecordingEnabledState] = React.useState(false);
   const saveInFlightRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -154,6 +155,29 @@ export const RecorderAuthoringApp: React.FC = () => {
     });
   }, [backend, isSaving]);
 
+  const applyPositionActionRecordingEnabled = React.useCallback(async (enabled: boolean) => {
+    await backend.setPositionActionRecordingEnabled({ enabled });
+    setPositionActionRecordingEnabledState(enabled);
+  }, [backend]);
+
+  const setPositionActionRecordingEnabled = React.useCallback((enabled: boolean) => {
+    if (isSaving)
+      return;
+    applyPositionActionRecordingEnabled(enabled).catch(error => {
+      const normalized = normalizeRecordingAuthoringError(
+          error,
+          enabled ? recordingReasonCodes.recordStartFailed : recordingReasonCodes.recordStopFailed,
+      );
+      setStatus(failedStatus(normalized.reasonCode, normalized.message));
+    });
+  }, [applyPositionActionRecordingEnabled, isSaving]);
+
+  const disablePositionActionRecordingIfNeeded = React.useCallback(async () => {
+    if (!positionActionRecordingEnabled)
+      return;
+    await applyPositionActionRecordingEnabled(false);
+  }, [applyPositionActionRecordingEnabled, positionActionRecordingEnabled]);
+
   const modeButtons = React.useMemo(() => [
     { mode: 'recording' as const, label: i18n.record, tooltip: i18n.tooltip.record },
     { mode: 'assertingVisibility' as const, label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
@@ -165,15 +189,19 @@ export const RecorderAuthoringApp: React.FC = () => {
   const clear = React.useCallback(() => {
     if (isSaving)
       return;
-    backend.clear().then(() => {
-      setSources([]);
-      setDeletedActionKeys(new Set());
-      setStatus({ kind: 'idle' });
-    }).catch(error => {
-      const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed);
-      setStatus(failedStatus(normalized.reasonCode, normalized.message));
-    });
-  }, [backend, isSaving]);
+    void (async () => {
+      try {
+        await disablePositionActionRecordingIfNeeded();
+        await backend.clear();
+        setSources([]);
+        setDeletedActionKeys(new Set());
+        setStatus({ kind: 'idle' });
+      } catch (error) {
+        const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed);
+        setStatus(failedStatus(normalized.reasonCode, normalized.message));
+      }
+    })();
+  }, [backend, disablePositionActionRecordingIfNeeded, isSaving]);
 
   const deleteAction = React.useCallback((key: string) => {
     if (isSaving)
@@ -199,7 +227,10 @@ export const RecorderAuthoringApp: React.FC = () => {
           throw normalizeRecordingAuthoringError(error, recordingReasonCodes.recordStopFailed);
         }
       }
-      const generated = generateModuleHandlerScriptFromSources(editableSources);
+      await disablePositionActionRecordingIfNeeded();
+      const latestSources = await backend.prepareRecordingSources();
+      setSources(latestSources);
+      const generated = generateModuleHandlerScriptFromSources(applyDeletedActionKeys(latestSources, deletedActionKeys));
       setStatus({ kind: 'uploading' });
       const result = await backend.saveRecording({
         scriptText: generated.scriptText,
@@ -220,7 +251,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     } finally {
       saveInFlightRef.current = false;
     }
-  }, [backend, editableSources, i18n.saveFailed, launchContext?.startUrl, mode, pageUrl]);
+  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, i18n.saveFailed, launchContext?.startUrl, mode, pageUrl]);
 
   const statusLabel = status.kind === 'saved'
     ? i18n.saved(status.result.recordingId)
@@ -245,6 +276,15 @@ export const RecorderAuthoringApp: React.FC = () => {
             {isActive ? i18n.stop : button.label}
           </button>;
         })}
+        <button
+          className={`selector-authoring-secondary-button ${positionActionRecordingEnabled ? 'toggled' : ''}`}
+          disabled={isSaving}
+          onClick={() => setPositionActionRecordingEnabled(!positionActionRecordingEnabled)}
+          title={i18n.tooltip.recordScroll}
+          type='button'
+        >
+          {i18n.recordScroll}
+        </button>
         <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
         <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
       </div>

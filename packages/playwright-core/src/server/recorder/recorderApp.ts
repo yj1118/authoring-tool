@@ -176,6 +176,13 @@ export class RecorderApp {
       setMode: async (params: { mode: Mode }) => {
         await this._recorder.setMode(params.mode);
       },
+      setPositionActionRecordingEnabled: async (params: { enabled: boolean }) => {
+        await this._recorder.setPositionActionRecordingEnabled(params.enabled);
+      },
+      prepareRecordingSources: async () => {
+        await this._recorder.flushPendingActions();
+        return [...this._userSources, ...this._recorderSources];
+      },
       resume: async () => {
         this._recorder.resume();
       },

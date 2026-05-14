@@ -99,6 +99,7 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
   private _omitCallTracking = false;
   private _currentLanguage: Language = 'javascript';
   private _recorderMode: 'default' | 'api';
+  private _positionActionRecordingEnabled = false;
 
   private _signalProcessor: RecorderSignalProcessor;
   private _pageAliases = new Map<Page, string>();
@@ -198,6 +199,7 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
           mode = 'none';
         const uiState: UIState = {
           mode,
+          positionActionRecordingEnabled: this._positionActionRecordingEnabled,
           actionPoint,
           actionSelector,
           ariaTemplate: this._highlightedElement.ariaTemplate,
@@ -301,6 +303,19 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
       pageToFocus?.bringToFront(nullProgress).catch(() => {});
     }
     await this._refreshOverlay();
+  }
+
+  async setPositionActionRecordingEnabled(enabled: boolean) {
+    if (this._positionActionRecordingEnabled === enabled)
+      return;
+    if (!enabled)
+      await this._flushPendingInjectedActions();
+    this._positionActionRecordingEnabled = enabled;
+    await this._refreshOverlay();
+  }
+
+  async flushPendingActions() {
+    await this._flushPendingInjectedActions();
   }
 
   async pickLocator(progress: Progress, page: Page): Promise<string> {

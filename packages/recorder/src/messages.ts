@@ -45,6 +45,7 @@ type RecorderAuthoringMessages = {
   assertText: string;
   assertValue: string;
   assertAria: string;
+  recordScroll: string;
   clear: string;
   save: string;
   noLaunchContext: string;
@@ -71,6 +72,7 @@ type RecorderAuthoringMessages = {
     assertText: string;
     assertValue: string;
     assertAria: string;
+    recordScroll: string;
     clear: string;
     save: string;
     deleteAction: string;
@@ -122,6 +124,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertText: 'Text',
       assertValue: 'Value',
       assertAria: 'ARIA',
+      recordScroll: 'Scroll',
       clear: 'Clear',
       save: 'Save',
       noLaunchContext: 'No launch context',
@@ -148,6 +151,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertText: 'Pick an element and record an assertion for its current text.',
         assertValue: 'Pick a form control and record an assertion for its current value.',
         assertAria: 'Pick a region and record an ARIA snapshot assertion for its accessibility structure.',
+        recordScroll: 'When enabled, page scrolling is recorded along with the active action or assertion mode.',
         clear: 'Clear all recorded actions and assertions in this session.',
         save: 'Generate and save the recorded script for this step.',
         deleteAction: 'Remove this recorded action or assertion from the script.',
@@ -192,6 +196,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertText: '文本',
       assertValue: '值',
       assertAria: 'ARIA',
+      recordScroll: '滚动',
       clear: '清空',
       save: '保存',
       noLaunchContext: '没有启动上下文',
@@ -218,6 +223,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertText: '选择页面元素，并录制它当前文本内容的断言。',
         assertValue: '选择表单控件，并录制它当前 value 的断言。',
         assertAria: '选择页面区域，并录制它无障碍语义结构的 ARIA snapshot 断言。',
+        recordScroll: '开启后，页面滚动会跟随当前操作或断言模式一起录制。',
         clear: '清空当前会话里已经录制的所有操作和断言。',
         save: '为当前步骤生成并保存录制脚本。',
         deleteAction: '从脚本中移除这条已录制的操作或断言。',
@@ -262,6 +268,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertText: '文字',
       assertValue: '值',
       assertAria: 'ARIA',
+      recordScroll: '捲動',
       clear: '清空',
       save: '儲存',
       noLaunchContext: '沒有啟動上下文',
@@ -288,6 +295,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
         assertValue: '選取表單控制項，並錄製它目前 value 的斷言。',
         assertAria: '選取頁面區域，並錄製它無障礙語意結構的 ARIA snapshot 斷言。',
+        recordScroll: '開啟後，頁面捲動會跟隨目前操作或斷言模式一起錄製。',
         clear: '清空目前工作階段已錄製的所有操作和斷言。',
         save: '為目前步驟生成並儲存錄製腳本。',
         deleteAction: '從腳本中移除這條已錄製的操作或斷言。',
@@ -332,6 +340,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertText: 'テキスト',
       assertValue: '値',
       assertAria: 'ARIA',
+      recordScroll: 'スクロール',
       clear: 'クリア',
       save: '保存',
       noLaunchContext: '起動コンテキストがありません',
@@ -358,6 +367,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',
         assertValue: 'フォームコントロールを選択し、現在の value を確認するアサーションを録画します。',
         assertAria: '領域を選択し、アクセシビリティ構造の ARIA snapshot アサーションを録画します。',
+        recordScroll: 'オンにすると、現在の操作またはアサーションモードと一緒にページスクロールを録画します。',
         clear: 'このセッションで録画済みの操作とアサーションをすべてクリアします。',
         save: 'このステップ用の録画スクリプトを生成して保存します。',
         deleteAction: 'この録画済みの操作またはアサーションをスクリプトから削除します。',
