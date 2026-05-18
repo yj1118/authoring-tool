@@ -200,6 +200,8 @@ export const RecorderAuthoringApp: React.FC = () => {
 
   const assertionModeButtons = React.useMemo<RecorderModeButton[]>(() => [
     { mode: 'assertingVisibility', label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
+    { mode: 'assertingDisabled', label: i18n.assertDisabled, tooltip: i18n.tooltip.assertDisabled },
+    { mode: 'assertingNotDisabled', label: i18n.assertNotDisabled, tooltip: i18n.tooltip.assertNotDisabled },
     { mode: 'assertingText', label: i18n.assertText, tooltip: i18n.tooltip.assertText },
     { mode: 'assertingValue', label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },
     { mode: 'assertingSnapshot', label: i18n.assertAria, tooltip: i18n.tooltip.assertAria },
@@ -286,10 +288,16 @@ export const RecorderAuthoringApp: React.FC = () => {
     }
   }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, i18n.saveFailed, launchContext?.startUrl, mode, pageUrl]);
 
+  const hasGeneratedError = !generatedSummary.ok && previewActions.length > 0;
+  const statusTone = status.kind === 'saved'
+    ? 'success'
+    : status.kind === 'failed' || hasGeneratedError
+      ? 'danger'
+      : 'normal';
   const statusLabel = status.kind === 'saved'
-    ? i18n.saved(status.result.recordingId)
+    ? i18n.saved()
     : status.kind === 'failed'
-      ? `${status.reasonCode}: ${status.message}`
+      ? status.message
       : i18n.status[status.kind as RecorderStatusKey];
   const failureAdvice = status.kind === 'failed' ? buildFailureAdvice(status.reasonCode, status.message, i18n) : null;
   const stepContextLabel = formatStepContextLabel(launchContext, locale, i18n.noLaunchContext);
@@ -312,19 +320,17 @@ export const RecorderAuthoringApp: React.FC = () => {
           >
             {i18n.recordScroll}
           </button>
-          <span className='recorder-authoring-toolbar-spacer' aria-hidden='true' />
           <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
-          <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
+          <button className='selector-authoring-primary-button recorder-authoring-save-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
         </div>
-        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertAria}`}>
+        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertAria}`}>
           {assertionModeButtons.map(renderModeButton)}
         </div>
       </div>
 
-      <div className='recorder-authoring-status'>
-        <span>{statusLabel}</span>
-        <span>{launchContext ? `${launchContext.caseId} / ${launchContext.stepId}` : i18n.noLaunchContext}</span>
-        <span>{generatedSummaryMessage}</span>
+      <div className={`recorder-authoring-status recorder-authoring-status-${statusTone}`}>
+        <span className='recorder-authoring-status-message'>{statusLabel}</span>
+        <span className='recorder-authoring-status-summary'>{generatedSummaryMessage}</span>
         {failureAdvice ? <span className='recorder-authoring-status-advice'>{failureAdvice}</span> : null}
       </div>
 

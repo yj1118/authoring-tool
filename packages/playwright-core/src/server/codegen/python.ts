@@ -128,6 +128,8 @@ export class PythonLanguageGenerator implements LanguageGenerator {
         return `expect(${subject}.${this._asLocator(action.selector)}).${action.substring ? 'to_contain_text' : 'to_have_text'}(${quote(action.text)})`;
       case 'assertChecked':
         return `expect(${subject}.${this._asLocator(action.selector)}).${action.checked ? 'to_be_checked()' : 'not_to_be_checked()'}`;
+      case 'assertDisabled':
+        return `expect(${subject}.${this._asLocator(action.selector)}).${action.disabled ? 'to_be_disabled()' : 'not_to_be_disabled()'}`;
       case 'assertVisible':
         return `expect(${subject}.${this._asLocator(action.selector)}).to_be_visible()`;
       case 'assertValue': {

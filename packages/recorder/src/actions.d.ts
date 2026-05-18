@@ -33,6 +33,7 @@ export type ActionName =
   'assertText' |
   'assertValue' |
   'assertChecked' |
+  'assertDisabled' |
   'assertVisible' |
   'assertSnapshot';
 
@@ -130,6 +131,11 @@ export type AssertCheckedAction = ActionWithSelector & {
   checked: boolean,
 };
 
+export type AssertDisabledAction = ActionWithSelector & {
+  name: 'assertDisabled',
+  disabled: boolean,
+};
+
 export type AssertVisibleAction = ActionWithSelector & {
   name: 'assertVisible',
 };
@@ -139,8 +145,8 @@ export type AssertSnapshotAction = ActionWithSelector & {
   ariaSnapshot: string,
 };
 
-export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertVisibleAction | AssertSnapshotAction;
-export type AssertAction = AssertCheckedAction | AssertValueAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
+export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertDisabledAction | AssertVisibleAction | AssertSnapshotAction;
+export type AssertAction = AssertCheckedAction | AssertDisabledAction | AssertValueAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
 export type PerformOnRecordAction = ClickAction | HoverAction | CheckAction | UncheckAction | PressAction | SelectAction;
 
 // Signals.

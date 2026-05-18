@@ -664,7 +664,7 @@ function isScreenshotCommand(metadata: CallMetadata) {
 }
 
 function isRecordingMode(mode: Mode) {
-  return ['recording', 'scrollIntoView', 'assertingText', 'assertingVisibility', 'assertingValue', 'assertingSnapshot'].includes(mode);
+  return ['recording', 'scrollIntoView', 'assertingText', 'assertingVisibility', 'assertingDisabled', 'assertingNotDisabled', 'assertingValue', 'assertingSnapshot'].includes(mode);
 }
 
 function languageForFile(file: string): Language {

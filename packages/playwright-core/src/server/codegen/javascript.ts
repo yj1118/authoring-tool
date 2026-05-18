@@ -119,6 +119,8 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).${action.substring ? 'toContainText' : 'toHaveText'}(${quote(action.text)});`;
       case 'assertChecked':
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)})${action.checked ? '' : '.not'}.toBeChecked();`;
+      case 'assertDisabled':
+        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)})${action.disabled ? '' : '.not'}.toBeDisabled();`;
       case 'assertVisible':
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toBeVisible();`;
       case 'assertValue': {

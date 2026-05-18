@@ -1,6 +1,11 @@
 import type { Source } from '../../recorderTypes';
 import { createRecordingAuthoringError, recordingReasonCodes } from '../errors/recordingErrors';
 import { validateGeneratedModuleHandlerScript, validateRecordedActionBlock } from './moduleHandlerScriptValidation';
+import {
+  RECORDING_EXPECT_CALL_NAME,
+  RECORDING_EXPECT_FACTORY_NAME,
+  RECORDING_EXPECT_RUNTIME_SOURCE,
+} from './runtime/recordingExpectRuntime';
 
 export type GeneratedModuleHandlerScript = {
   scriptText: string;
@@ -38,6 +43,10 @@ function isAssertionAction(actionText: string): boolean {
   return /\bexpect\s*\(/u.test(actionText);
 }
 
+function rewriteRecordedActionBlockForRuntime(actionText: string): string {
+  return actionText.replace(/(^|[^\w$.])expect\s*\(/gu, `$1${RECORDING_EXPECT_CALL_NAME}(`);
+}
+
 export function generateModuleHandlerScriptFromSources(sources: Source[]): GeneratedModuleHandlerScript {
   const source = chooseRecordedSource(sources);
   if (!source) {
@@ -61,61 +70,15 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
     validateRecordedActionBlock(action);
 
   const assertionCount = actions.filter(isAssertionAction).length;
-  const actionBlocks = actions.map(action => indentBlock(action, 2)).join('\n\n');
+  const actionBlocks = actions
+      .map(rewriteRecordedActionBlockForRuntime)
+      .map(action => indentBlock(action, 2))
+      .join('\n\n');
 
-  const scriptText = `function createRecordingExpect(locator, negated = false) {
-  function fail(message) {
-    throw new Error(negated ? \`Assertion unexpectedly passed: \${message}\` : \`Assertion failed: \${message}\`);
-  }
-  function check(condition, message) {
-    if (negated ? condition : !condition)
-      fail(message);
-  }
-  async function readText() {
-    return (await locator.textContent()) ?? '';
-  }
-  return {
-    get not() {
-      return createRecordingExpect(locator, !negated);
-    },
-    async toBeVisible() {
-      check(await locator.isVisible(), 'locator should be visible');
-    },
-    async toBeChecked() {
-      check(await locator.isChecked(), 'locator should be checked');
-    },
-    async toHaveText(expected) {
-      const actual = (await readText()).trim();
-      check(actual === String(expected), \`expected text "\${String(expected)}" but got "\${actual}"\`);
-    },
-    async toContainText(expected) {
-      const actual = await readText();
-      check(actual.includes(String(expected)), \`expected text to contain "\${String(expected)}" but got "\${actual}"\`);
-    },
-    async toHaveValue(expected) {
-      const actual = await locator.inputValue();
-      check(actual === String(expected), \`expected value "\${String(expected)}" but got "\${actual}"\`);
-    },
-    async toBeEmpty() {
-      let actual = '';
-      try {
-        actual = await locator.inputValue();
-      } catch {
-        actual = await readText();
-      }
-      check(actual.length === 0, \`expected empty value/text but got "\${actual}"\`);
-    },
-    async toMatchAriaSnapshot(expected) {
-      if (typeof locator.ariaSnapshot !== 'function')
-        throw new Error('Assertion failed: locator.ariaSnapshot is not available in this runtime');
-      const actual = await locator.ariaSnapshot();
-      check(String(actual).trim() === String(expected).trim(), 'ARIA snapshot did not match the recorded snapshot');
-    },
-  };
-}
+  const scriptText = `${RECORDING_EXPECT_RUNTIME_SOURCE}
 
 export default async function recording(page, context) {
-  const expect = createRecordingExpect;
+  const ${RECORDING_EXPECT_CALL_NAME} = ${RECORDING_EXPECT_FACTORY_NAME};
   const recordingTimeoutMs = ${DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS};
   page.setDefaultTimeout?.(recordingTimeoutMs);
   page.setDefaultNavigationTimeout?.(recordingTimeoutMs);

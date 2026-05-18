@@ -120,6 +120,15 @@ async function performActionImpl(progress: Progress, mainFrame: Frame, actionInC
     return;
   }
 
+  if (action.name === 'assertDisabled') {
+    await mainFrame.expect(progress, selector, {
+      selector,
+      expression: 'to.be.disabled',
+      isNot: !action.disabled,
+    });
+    return;
+  }
+
   if (action.name === 'assertText') {
     await mainFrame.expect(progress, selector, {
       selector,

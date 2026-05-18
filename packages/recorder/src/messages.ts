@@ -43,6 +43,8 @@ type RecorderAuthoringMessages = {
   locate: string;
   stop: string;
   assertVisible: string;
+  assertDisabled: string;
+  assertNotDisabled: string;
   assertText: string;
   assertValue: string;
   assertAria: string;
@@ -71,6 +73,8 @@ type RecorderAuthoringMessages = {
     locate: string;
     stop: string;
     assertVisible: string;
+    assertDisabled: string;
+    assertNotDisabled: string;
     assertText: string;
     assertValue: string;
     assertAria: string;
@@ -124,6 +128,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       locate: 'Locate',
       stop: 'Stop',
       assertVisible: 'Visible',
+      assertDisabled: 'Disabled',
+      assertNotDisabled: 'Not disabled',
       assertText: 'Text',
       assertValue: 'Value',
       assertAria: 'ARIA',
@@ -152,6 +158,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: 'Pick a target element and record scrollIntoViewIfNeeded so replay can bring it into view.',
         stop: 'Stop recording new browser interactions.',
         assertVisible: 'Pick an element and record an assertion that it should be visible.',
+        assertDisabled: 'Pick an element and record an assertion that it should be disabled.',
+        assertNotDisabled: 'Pick an element and record an assertion that it should not be disabled.',
         assertText: 'Pick an element and record an assertion for its current text.',
         assertValue: 'Pick a form control and record an assertion for its current value.',
         assertAria: 'Pick a region and record an ARIA snapshot assertion for its accessibility structure.',
@@ -198,6 +206,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       locate: '定位',
       stop: '停止',
       assertVisible: '可见性',
+      assertDisabled: '禁用',
+      assertNotDisabled: '非禁用',
       assertText: '文本',
       assertValue: '值',
       assertAria: 'ARIA',
@@ -226,6 +236,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: '选择目标元素，并录制 scrollIntoViewIfNeeded，让回放时自动将它带入可见区域。',
         stop: '停止继续录制新的浏览器操作。',
         assertVisible: '选择页面元素，并录制“该元素应该可见”的断言。',
+        assertDisabled: '选择页面元素，并录制“该元素应该处于禁用状态”的断言。',
+        assertNotDisabled: '选择页面元素，并录制“该元素不应处于禁用状态”的断言。',
         assertText: '选择页面元素，并录制它当前文本内容的断言。',
         assertValue: '选择表单控件，并录制它当前 value 的断言。',
         assertAria: '选择页面区域，并录制它无障碍语义结构的 ARIA snapshot 断言。',
@@ -272,6 +284,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       locate: '定位',
       stop: '停止',
       assertVisible: '可見性',
+      assertDisabled: '停用',
+      assertNotDisabled: '非停用',
       assertText: '文字',
       assertValue: '值',
       assertAria: 'ARIA',
@@ -300,6 +314,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: '選擇目標元素，並錄製 scrollIntoViewIfNeeded，讓回放時自動將它帶入可見區域。',
         stop: '停止繼續錄製新的瀏覽器操作。',
         assertVisible: '選取頁面元素，並錄製「該元素應可見」的斷言。',
+        assertDisabled: '選取頁面元素，並錄製「該元素應處於停用狀態」的斷言。',
+        assertNotDisabled: '選取頁面元素，並錄製「該元素不應處於停用狀態」的斷言。',
         assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
         assertValue: '選取表單控制項，並錄製它目前 value 的斷言。',
         assertAria: '選取頁面區域，並錄製它無障礙語意結構的 ARIA snapshot 斷言。',
@@ -346,6 +362,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       locate: '位置合わせ',
       stop: '停止',
       assertVisible: '表示',
+      assertDisabled: '無効',
+      assertNotDisabled: '非無効',
       assertText: 'テキスト',
       assertValue: '値',
       assertAria: 'ARIA',
@@ -374,6 +392,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: '対象要素を選択し、再生時に表示領域へ入れる scrollIntoViewIfNeeded を録画します。',
         stop: '新しいブラウザー操作の録画を停止します。',
         assertVisible: '要素を選択し、その要素が表示されていることを確認するアサーションを録画します。',
+        assertDisabled: '要素を選択し、その要素が無効状態であることを確認するアサーションを録画します。',
+        assertNotDisabled: '要素を選択し、その要素が無効状態ではないことを確認するアサーションを録画します。',
         assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',
         assertValue: 'フォームコントロールを選択し、現在の value を確認するアサーションを録画します。',
         assertAria: '領域を選択し、アクセシビリティ構造の ARIA snapshot アサーションを録画します。',

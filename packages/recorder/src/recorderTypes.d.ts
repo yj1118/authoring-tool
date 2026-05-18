@@ -28,6 +28,8 @@ export type Mode =
   | 'standby'
   | 'scrollIntoView'
   | 'assertingVisibility'
+  | 'assertingDisabled'
+  | 'assertingNotDisabled'
   | 'assertingValue'
   | 'assertingSnapshot';
 
