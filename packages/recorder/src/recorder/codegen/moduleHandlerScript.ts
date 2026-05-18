@@ -78,7 +78,8 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
   const scriptText = `${RECORDING_EXPECT_RUNTIME_SOURCE}
 
 export default async function recording(page, context) {
-  const ${RECORDING_EXPECT_CALL_NAME} = ${RECORDING_EXPECT_FACTORY_NAME};
+  const recordingAssertions = [];
+  const ${RECORDING_EXPECT_CALL_NAME} = locator => ${RECORDING_EXPECT_FACTORY_NAME}(locator, false, recordingAssertions);
   const recordingTimeoutMs = ${DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS};
   page.setDefaultTimeout?.(recordingTimeoutMs);
   page.setDefaultNavigationTimeout?.(recordingTimeoutMs);
@@ -91,6 +92,7 @@ ${actionBlocks}
       sourceId: ${JSON.stringify(source.id)},
       actionCount: ${actions.length},
       assertionCount: ${assertionCount},
+      assertions: recordingAssertions,
     },
   };
 }

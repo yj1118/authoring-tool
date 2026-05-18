@@ -34,7 +34,8 @@ test('generates a Playwright Page recording script from Playwright actions and a
   assert.doesNotMatch(generated.scriptText, /\b(?:browser|context)\.newPage\s*\(/u);
   assert.ok(generated.scriptText.startsWith(RECORDING_EXPECT_RUNTIME_SOURCE));
   assert.match(generated.scriptText, /createRecordingExpect/u);
-  assert.match(generated.scriptText, new RegExp(`const ${RECORDING_EXPECT_CALL_NAME} = createRecordingExpect`, 'u'));
+  assert.match(generated.scriptText, new RegExp(`const ${RECORDING_EXPECT_CALL_NAME} = locator => createRecordingExpect\\(locator, false, recordingAssertions\\)`, 'u'));
+  assert.match(generated.scriptText, /assertions: recordingAssertions/u);
   assert.match(generated.scriptText, new RegExp(`await ${RECORDING_EXPECT_CALL_NAME}\\(page\\.getByRole`, 'u'));
   assert.doesNotMatch(generated.scriptText, /await expect\s*\(/u);
   assert.match(generated.scriptText, /scrollTo\(position\.x, position\.y\)/u);

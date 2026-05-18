@@ -18,7 +18,20 @@ type RecordingExpectation = {
   toMatchAriaSnapshot(expected: unknown): Promise<void>;
 };
 
-type RecordingExpectFactory = (locator: unknown, negated?: boolean) => RecordingExpectation;
+type RecordingAssertionRecord = {
+  code: string;
+  assertionKind?: string;
+  matcher?: string;
+  expected?: unknown;
+  actual?: unknown;
+  negated?: boolean;
+};
+
+type RecordingExpectFactory = (
+  locator: unknown,
+  negated?: boolean,
+  assertions?: RecordingAssertionRecord[],
+) => RecordingExpectation;
 
 function loadRuntimeExpect(): RecordingExpectFactory {
   // Parses the embedded helper exactly as it appears in generated recording scripts.
@@ -50,6 +63,7 @@ function createLocator(state: {
 
 test('recording expect runtime supports generated assertion helpers', async () => {
   const expect = loadRuntimeExpect();
+  const assertions: RecordingAssertionRecord[] = [];
   const locator = createLocator({
     visible: true,
     checked: true,
@@ -59,16 +73,37 @@ test('recording expect runtime supports generated assertion helpers', async () =
     aria: '- button "Submit order"',
   });
 
-  await expect(locator).toBeVisible();
-  await expect(locator).toBeChecked();
-  await expect(locator).toBeDisabled();
-  await expect(locator).toHaveText('Submit order');
-  await expect(locator).toContainText('Submit');
-  await expect(locator).toHaveValue(42);
-  await expect(locator).toMatchAriaSnapshot('- button "Submit order"');
-  await expect(createLocator({ text: '' })).toBeEmpty();
-  await expect(createLocator({ visible: false })).not.toBeVisible();
-  await expect(createLocator({ disabled: false })).not.toBeDisabled();
+  await expect(locator, false, assertions).toBeVisible();
+  await expect(locator, false, assertions).toBeChecked();
+  await expect(locator, false, assertions).toBeDisabled();
+  await expect(locator, false, assertions).toHaveText('Submit order');
+  await expect(locator, false, assertions).toContainText('Submit');
+  await expect(locator, false, assertions).toHaveValue(42);
+  await expect(locator, false, assertions).toMatchAriaSnapshot('- button "Submit order"');
+  await expect(createLocator({ text: '' }), false, assertions).toBeEmpty();
+  await expect(createLocator({ visible: false }), false, assertions).not.toBeVisible();
+  await expect(createLocator({ disabled: false }), false, assertions).not.toBeDisabled();
+
+  assert.deepEqual(assertions.map(assertion => assertion.code), [
+    'recording_assert.visible.expected_visible',
+    'recording_assert.checked.expected_checked',
+    'recording_assert.disabled.expected_disabled',
+    'recording_assert.text.expected_exact',
+    'recording_assert.text.expected_contains',
+    'recording_assert.value.expected_exact',
+    'recording_assert.aria.expected_snapshot',
+    'recording_assert.empty.expected_empty',
+    'recording_assert.visible.expected_not_visible',
+    'recording_assert.disabled.expected_not_disabled',
+  ]);
+  assert.deepEqual(assertions.at(-1), {
+    code: 'recording_assert.disabled.expected_not_disabled',
+    assertionKind: 'disabled',
+    matcher: 'not.toBeDisabled',
+    expected: false,
+    actual: false,
+    negated: true,
+  });
 });
 
 test('recording expect runtime reports assertion failures with stable messages', async () => {

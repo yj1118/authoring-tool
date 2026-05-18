@@ -1,7 +1,7 @@
 export const RECORDING_EXPECT_FACTORY_NAME = 'createRecordingExpect';
 export const RECORDING_EXPECT_CALL_NAME = 'recordingExpect';
 
-export const RECORDING_EXPECT_RUNTIME_SOURCE = `function createRecordingExpect(locator, negated = false) {
+export const RECORDING_EXPECT_RUNTIME_SOURCE = `function createRecordingExpect(locator, negated = false, assertions = undefined) {
   function createAssertionError(input) {
     const error = new Error(input.message || \`Recording assertion failed: \${input.assertionCode}\`);
     error.name = 'RecordingAssertionError';
@@ -21,6 +21,24 @@ export const RECORDING_EXPECT_RUNTIME_SOURCE = `function createRecordingExpect(l
       message: input.message || \`Recording assertion failed: \${input.assertionCode}\`,
     });
   }
+  function createAssertionRecord(input) {
+    return {
+      code: input.assertionCode,
+      assertionKind: input.assertionKind,
+      matcher: input.matcher,
+      expected: input.expected,
+      actual: input.actual,
+      negated: Boolean(input.negated),
+    };
+  }
+  function recordSuccess(input) {
+    if (!Array.isArray(assertions))
+      return;
+    assertions.push(createAssertionRecord({
+      ...input,
+      negated,
+    }));
+  }
   async function readText() {
     return (await locator.textContent()) ?? '';
   }
@@ -34,30 +52,36 @@ export const RECORDING_EXPECT_RUNTIME_SOURCE = `function createRecordingExpect(l
   }
   function checkBoolean(input) {
     const expected = !negated;
+    const assertion = {
+      assertionCode: expectedCode(input.assertionKind, input.positiveCode, input.negatedCode),
+      assertionKind: input.assertionKind,
+      matcher: matcherName(input.matcher),
+      expected,
+      actual: input.actual,
+    };
     if (input.actual !== expected) {
-      fail({
-        assertionCode: expectedCode(input.assertionKind, input.positiveCode, input.negatedCode),
-        assertionKind: input.assertionKind,
-        matcher: matcherName(input.matcher),
-        expected,
-        actual: input.actual,
-      });
+      fail(assertion);
+      return;
     }
+    recordSuccess(assertion);
   }
   function checkComparison(input) {
+    const assertion = {
+      assertionCode: expectedCode(input.assertionKind, input.positiveCode, input.negatedCode),
+      assertionKind: input.assertionKind,
+      matcher: matcherName(input.matcher),
+      expected: input.expected,
+      actual: input.actual,
+    };
     if (negated ? input.passed : !input.passed) {
-      fail({
-        assertionCode: expectedCode(input.assertionKind, input.positiveCode, input.negatedCode),
-        assertionKind: input.assertionKind,
-        matcher: matcherName(input.matcher),
-        expected: input.expected,
-        actual: input.actual,
-      });
+      fail(assertion);
+      return;
     }
+    recordSuccess(assertion);
   }
   return {
     get not() {
-      return createRecordingExpect(locator, !negated);
+      return createRecordingExpect(locator, !negated, assertions);
     },
     async toBeVisible() {
       checkBoolean({
