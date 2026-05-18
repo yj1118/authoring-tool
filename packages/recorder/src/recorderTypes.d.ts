@@ -30,6 +30,8 @@ export type Mode =
   | 'assertingVisibility'
   | 'assertingDisabled'
   | 'assertingNotDisabled'
+  | 'assertingChecked'
+  | 'assertingUnchecked'
   | 'assertingValue'
   | 'assertingSnapshot';
 

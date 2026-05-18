@@ -24,6 +24,7 @@ test('generates a Playwright Page recording script from Playwright actions and a
       "await page.getByText('Submit').click();",
       "await expect(page.getByRole('button', { name: 'OK' })).toBeVisible();",
       "await expect(page.getByRole('button', { name: 'Next' })).not.toBeDisabled();",
+      "await expect(page.getByLabel('Agree')).not.toBeChecked();",
       "await page.locator('body').evaluate((element, position) => { element.scrollTo(position.x, position.y); }, { x: 0, y: 400 });",
     ]),
   ]);
@@ -35,14 +36,32 @@ test('generates a Playwright Page recording script from Playwright actions and a
   assert.ok(generated.scriptText.startsWith(RECORDING_EXPECT_RUNTIME_SOURCE));
   assert.match(generated.scriptText, /createRecordingExpect/u);
   assert.match(generated.scriptText, new RegExp(`const ${RECORDING_EXPECT_CALL_NAME} = locator => createRecordingExpect\\(locator, false, recordingAssertions\\)`, 'u'));
+  assert.doesNotMatch(generated.scriptText, /recordingTimeoutMs/u);
+  assert.doesNotMatch(generated.scriptText, /setDefault(?:Navigation)?Timeout/u);
   assert.match(generated.scriptText, /assertions: recordingAssertions/u);
   assert.match(generated.scriptText, new RegExp(`await ${RECORDING_EXPECT_CALL_NAME}\\(page\\.getByRole`, 'u'));
   assert.doesNotMatch(generated.scriptText, /await expect\s*\(/u);
   assert.match(generated.scriptText, /scrollTo\(position\.x, position\.y\)/u);
   assert.match(generated.scriptText, /toBeDisabled/u);
-  assert.equal(generated.actionCount, 4);
-  assert.equal(generated.assertionCount, 2);
+  assert.match(generated.scriptText, /not\.toBeChecked/u);
+  assert.match(generated.scriptText, /actionCount: 2/u);
+  assert.equal(generated.actionCount, 2);
+  assert.equal(generated.assertionCount, 3);
   assert.equal(generated.sourceId, 'playwright-test');
+});
+
+test('counts assertion-only recordings separately from browser operations', () => {
+  const generated = generateModuleHandlerScriptFromSources([
+    sourceWithActions([
+      "await expect(page.getByText('Ready')).toBeVisible();",
+      "await expect(page.getByRole('button', { name: 'Submit' })).not.toBeDisabled();",
+    ]),
+  ]);
+
+  assert.match(generated.scriptText, /actionCount: 0/u);
+  assert.match(generated.scriptText, /assertionCount: 2/u);
+  assert.equal(generated.actionCount, 0);
+  assert.equal(generated.assertionCount, 2);
 });
 
 test('rejects generated recording scripts that still contain Playwright Test wrappers', () => {

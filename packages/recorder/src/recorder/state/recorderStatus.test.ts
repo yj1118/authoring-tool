@@ -79,4 +79,10 @@ test('recorder status preserves active recording state during unrelated navigati
 
   status = modeChangedStatus({ kind: 'ready' }, 'assertingNotDisabled');
   assert.equal(status.kind, 'recording');
+
+  status = modeChangedStatus({ kind: 'ready' }, 'assertingChecked');
+  assert.equal(status.kind, 'recording');
+
+  status = modeChangedStatus({ kind: 'ready' }, 'assertingUnchecked');
+  assert.equal(status.kind, 'recording');
 });

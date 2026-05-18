@@ -13,7 +13,7 @@ export type RecorderStatus =
   | { kind: 'failed'; reasonCode: string; message: string };
 
 export type RecorderStatusKey = Exclude<RecorderStatus['kind'], 'saved' | 'failed'>;
-export type RecorderCaptureMode = 'recording' | 'scrollIntoView' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingText' | 'assertingValue' | 'assertingSnapshot';
+export type RecorderCaptureMode = 'recording' | 'scrollIntoView' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingValue' | 'assertingSnapshot';
 
 export function isRecorderCaptureMode(mode: Mode): mode is RecorderCaptureMode {
   return mode === 'recording'
@@ -21,6 +21,8 @@ export function isRecorderCaptureMode(mode: Mode): mode is RecorderCaptureMode {
     || mode === 'assertingVisibility'
     || mode === 'assertingDisabled'
     || mode === 'assertingNotDisabled'
+    || mode === 'assertingChecked'
+    || mode === 'assertingUnchecked'
     || mode === 'assertingText'
     || mode === 'assertingValue'
     || mode === 'assertingSnapshot';

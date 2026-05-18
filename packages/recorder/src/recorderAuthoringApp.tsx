@@ -21,6 +21,8 @@ import { createRecorderBackend } from './recorderBackend';
 import { getRecorderAuthoringMessages, normalizeRecorderLocale } from './messages';
 import { generateModuleHandlerScriptFromSources } from './recorder/codegen/moduleHandlerScript';
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from './recorder/errors/recordingErrors';
+import { saveRecordingWorkflow } from './recorder/save/saveRecordingWorkflow';
+import { applyDeletedActionKeys, choosePreviewActions } from './recorder/sources/recordedSourceModel';
 import {
   failedStatus,
   isRecorderCaptureMode,
@@ -29,23 +31,16 @@ import {
   launchStartedStatus,
   modeChangedStatus,
   pageNavigatedStatus,
-  type RecorderCaptureMode,
   type RecorderStatus,
   type RecorderStatusKey,
 } from './recorder/state/recorderStatus';
+import {
+  buildActionModeButtons,
+  buildAssertionModeButtons,
+  type RecorderModeButton,
+} from './recorder/toolbar/recorderToolCatalog';
 
 const launchContextTimeoutMs = 8000;
-
-type ActionPreviewEntry = {
-  key: string;
-  text: string;
-};
-
-type RecorderModeButton = {
-  mode: RecorderCaptureMode;
-  label: string;
-  tooltip: string;
-};
 
 export const RecorderAuthoringApp: React.FC = () => {
   const backend = React.useMemo(createRecorderBackend, []);
@@ -193,19 +188,9 @@ export const RecorderAuthoringApp: React.FC = () => {
     await applyPositionActionRecordingEnabled(false);
   }, [applyPositionActionRecordingEnabled, positionActionRecordingEnabled]);
 
-  const actionModeButtons = React.useMemo<RecorderModeButton[]>(() => [
-    { mode: 'recording', label: i18n.record, tooltip: i18n.tooltip.record },
-    { mode: 'scrollIntoView', label: i18n.locate, tooltip: i18n.tooltip.locate },
-  ], [i18n]);
+  const actionModeButtons = React.useMemo<RecorderModeButton[]>(() => buildActionModeButtons(i18n), [i18n]);
 
-  const assertionModeButtons = React.useMemo<RecorderModeButton[]>(() => [
-    { mode: 'assertingVisibility', label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
-    { mode: 'assertingDisabled', label: i18n.assertDisabled, tooltip: i18n.tooltip.assertDisabled },
-    { mode: 'assertingNotDisabled', label: i18n.assertNotDisabled, tooltip: i18n.tooltip.assertNotDisabled },
-    { mode: 'assertingText', label: i18n.assertText, tooltip: i18n.tooltip.assertText },
-    { mode: 'assertingValue', label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },
-    { mode: 'assertingSnapshot', label: i18n.assertAria, tooltip: i18n.tooltip.assertAria },
-  ], [i18n]);
+  const assertionModeButtons = React.useMemo<RecorderModeButton[]>(() => buildAssertionModeButtons(i18n), [i18n]);
 
   const renderModeButton = React.useCallback((button: RecorderModeButton) => {
     const isActive = mode === button.mode;
@@ -253,36 +238,18 @@ export const RecorderAuthoringApp: React.FC = () => {
       return;
     saveInFlightRef.current = true;
     try {
-      setStatus({ kind: 'generating' });
-      if (isRecorderCaptureMode(mode)) {
-        try {
-          await backend.setMode({ mode: 'standby' });
-          setMode('standby');
-        } catch (error) {
-          throw normalizeRecordingAuthoringError(error, recordingReasonCodes.recordStopFailed);
-        }
-      }
-      await disablePositionActionRecordingIfNeeded();
-      const latestSources = await backend.prepareRecordingSources();
-      setSources(latestSources);
-      const generated = generateModuleHandlerScriptFromSources(applyDeletedActionKeys(latestSources, deletedActionKeys));
-      setStatus({ kind: 'uploading' });
-      const result = await backend.saveRecording({
-        scriptText: generated.scriptText,
-        actionCount: generated.actionCount,
-        assertionCount: generated.assertionCount,
-        sourceId: generated.sourceId,
-        startUrl: launchContext?.startUrl ?? pageUrl,
-        finalUrl: pageUrl,
-        timeoutMs: generated.timeoutMs,
+      await saveRecordingWorkflow({
+        backend,
+        deletedActionKeys,
+        disablePositionActionRecordingIfNeeded,
+        launchContext,
+        mode,
+        pageUrl,
+        saveFailedMessage: i18n.saveFailed,
+        setMode,
+        setSources,
+        setStatus,
       });
-      setStatus({ kind: 'committing' });
-      if (result.ok !== true)
-        throw new Error(result.message || i18n.saveFailed);
-      setStatus({ kind: 'saved', result });
-    } catch (error) {
-      const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.uploadFailed);
-      setStatus(failedStatus(normalized.reasonCode, normalized.message));
     } finally {
       saveInFlightRef.current = false;
     }
@@ -323,7 +290,7 @@ export const RecorderAuthoringApp: React.FC = () => {
           <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
           <button className='selector-authoring-primary-button recorder-authoring-save-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
         </div>
-        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertAria}`}>
+        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertChecked} / ${i18n.assertUnchecked} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertAria}`}>
           {assertionModeButtons.map(renderModeButton)}
         </div>
       </div>
@@ -428,50 +395,5 @@ function rejectAfter<T>(promise: Promise<T>, timeoutMs: number, message: string)
   return Promise.race([promise, timeoutPromise]).finally(() => {
     if (timeoutId)
       clearTimeout(timeoutId);
-  });
-}
-
-function chooseRecordedSource(sources: Source[]): Source | undefined {
-  return sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')
-    ?? sources.find(candidate => candidate.isRecorded && candidate.actions?.length);
-}
-
-function normalizePreviewAction(action: string): string {
-  return action.trim().split('\n').find(line => line.trim().length > 0)?.trim() ?? '';
-}
-
-function hashActionText(action: string): string {
-  let hash = 0;
-  for (let i = 0; i < action.length; i++)
-    hash = Math.imul(31, hash) + action.charCodeAt(i) | 0;
-  return (hash >>> 0).toString(36);
-}
-
-function actionKey(source: Source, action: string, index: number): string {
-  return `${source.id}:${index}:${hashActionText(action)}`;
-}
-
-function applyDeletedActionKeys(sources: Source[], deletedActionKeys: Set<string>): Source[] {
-  if (!deletedActionKeys.size)
-    return sources;
-  return sources.map(source => {
-    if (!source.isRecorded || !source.actions?.length)
-      return source;
-    const actions = source.actions.filter((action, index) => !deletedActionKeys.has(actionKey(source, action, index)));
-    return { ...source, actions };
-  });
-}
-
-function choosePreviewActions(sources: Source[], deletedActionKeys: Set<string>): ActionPreviewEntry[] {
-  const source = sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')
-    ?? chooseRecordedSource(sources);
-  if (!source)
-    return [];
-  return (source.actions ?? []).flatMap((action, index) => {
-    const key = actionKey(source, action, index);
-    if (deletedActionKeys.has(key))
-      return [];
-    const text = normalizePreviewAction(action);
-    return text ? [{ key, text }] : [];
   });
 }

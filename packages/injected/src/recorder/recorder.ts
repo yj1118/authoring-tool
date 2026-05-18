@@ -17,6 +17,7 @@
 // This is the only dependency this file is allowed to have, because we are fine with a dupe.
 // See DEPS.list for more details.
 import clipPaths from './clipPaths';
+import { CheckedStateAssertionTool } from './checkedStateAssertionTool';
 
 import type { Point } from '@isomorphic/types';
 import type { AriaSnapshot } from '../ariaSnapshot';
@@ -27,7 +28,7 @@ import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 import type { Language } from '@isomorphic/locatorGenerators';
 
-type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingValue' | 'assertingSnapshot';
+type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingValue' | 'assertingSnapshot';
 type InspectToolIntent = 'pickSelector' | 'assertVisible' | 'assertDisabled' | 'assertNotDisabled' | 'scrollIntoView';
 type RecorderOptions = {
   recorderMode?: 'default' | 'api';
@@ -43,6 +44,8 @@ function isRecorderCaptureMode(mode: Mode): boolean {
     || mode === 'assertingVisibility'
     || mode === 'assertingDisabled'
     || mode === 'assertingNotDisabled'
+    || mode === 'assertingChecked'
+    || mode === 'assertingUnchecked'
     || mode === 'assertingText'
     || mode === 'assertingValue'
     || mode === 'assertingSnapshot';
@@ -65,7 +68,7 @@ export interface RecorderDelegate {
   highlightUpdated?(): void;
 }
 
-interface RecorderTool {
+export interface RecorderTool {
   cursor?(): string;
   install?(): void;
   uninstall?(): void;
@@ -1172,7 +1175,7 @@ class TextAssertionTool implements RecorderTool {
   }
 
   private _elementHasValue(element: Element) {
-    return element.nodeName === 'TEXTAREA' || element.nodeName === 'SELECT' || (element.nodeName === 'INPUT' && !['button', 'image', 'reset', 'submit'].includes((element as HTMLInputElement).type));
+    return element.nodeName === 'TEXTAREA' || element.nodeName === 'SELECT' || (element.nodeName === 'INPUT' && !['button', 'checkbox', 'image', 'radio', 'reset', 'submit'].includes((element as HTMLInputElement).type));
   }
 
   private _generateAction(): actions.AssertAction | null {
@@ -1184,22 +1187,12 @@ class TextAssertionTool implements RecorderTool {
       if (!this._elementHasValue(target))
         return null;
       const { selector } = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
-      if (target.nodeName === 'INPUT' && ['checkbox', 'radio'].includes((target as HTMLInputElement).type.toLowerCase())) {
-        return {
-          name: 'assertChecked',
-          selector,
-          signals: [],
-          // Interestingly, inputElement.checked is reversed inside this event handler.
-          checked: !(target as HTMLInputElement).checked,
-        };
-      } else {
-        return {
-          name: 'assertValue',
-          selector,
-          signals: [],
-          value: (target as (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)).value,
-        };
-      }
+      return {
+        name: 'assertValue',
+        selector,
+        signals: [],
+        value: (target as (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)).value,
+      };
     } else if (this._kind === 'snapshot') {
       const generated = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName, forTextExpect: true });
       this._hoverHighlight = { selector: generated.selector, elements: generated.elements, color: HighlightColors.assert };
@@ -1231,8 +1224,6 @@ class TextAssertionTool implements RecorderTool {
   private _renderValue(action: actions.Action) {
     if (action?.name === 'assertText')
       return this._recorder.injectedScript.utils.normalizeWhiteSpace(action.text);
-    if (action?.name === 'assertChecked')
-      return String(action.checked);
     if (action?.name === 'assertValue')
       return action.value;
     if (action?.name === 'assertSnapshot')
@@ -1360,6 +1351,8 @@ class Overlay {
           'assertingVisibility': 'recording-inspecting',
           'assertingDisabled': 'recording-inspecting',
           'assertingNotDisabled': 'recording-inspecting',
+          'assertingChecked': 'recording-inspecting',
+          'assertingUnchecked': 'recording-inspecting',
           'assertingValue': 'recording-inspecting',
           'assertingSnapshot': 'recording-inspecting',
         };
@@ -1393,7 +1386,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingSnapshot' | 'assertingValue' | 'scrollIntoView') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingSnapshot' | 'assertingValue' | 'scrollIntoView') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
@@ -1493,6 +1486,8 @@ export class Recorder {
       'assertingVisibility': new InspectTool(this, 'assertVisible'),
       'assertingDisabled': new InspectTool(this, 'assertDisabled'),
       'assertingNotDisabled': new InspectTool(this, 'assertNotDisabled'),
+      'assertingChecked': new CheckedStateAssertionTool(this, true),
+      'assertingUnchecked': new CheckedStateAssertionTool(this, false),
       'assertingValue': new TextAssertionTool(this, 'value'),
       'assertingSnapshot': new TextAssertionTool(this, 'snapshot'),
     };
@@ -2046,14 +2041,14 @@ function copyText(document: Document, text: string) {
   textArea.remove();
 }
 
-type HighlightModel = {
+export type HighlightModel = {
   selector?: string;
   elements: Element[];
   color: string;
   tooltipText?: string;
 };
 
-type HighlightModelWithSelector = HighlightModel & {
+export type HighlightModelWithSelector = HighlightModel & {
   selector: string;
 };
 

@@ -70,6 +70,7 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
     validateRecordedActionBlock(action);
 
   const assertionCount = actions.filter(isAssertionAction).length;
+  const actionCount = actions.length - assertionCount;
   const actionBlocks = actions
       .map(rewriteRecordedActionBlockForRuntime)
       .map(action => indentBlock(action, 2))
@@ -80,9 +81,6 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
 export default async function recording(page, context) {
   const recordingAssertions = [];
   const ${RECORDING_EXPECT_CALL_NAME} = locator => ${RECORDING_EXPECT_FACTORY_NAME}(locator, false, recordingAssertions);
-  const recordingTimeoutMs = ${DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS};
-  page.setDefaultTimeout?.(recordingTimeoutMs);
-  page.setDefaultNavigationTimeout?.(recordingTimeoutMs);
 
 ${actionBlocks}
 
@@ -90,7 +88,7 @@ ${actionBlocks}
     status: 'ok',
     diagnostics: {
       sourceId: ${JSON.stringify(source.id)},
-      actionCount: ${actions.length},
+      actionCount: ${actionCount},
       assertionCount: ${assertionCount},
       assertions: recordingAssertions,
     },
@@ -102,7 +100,7 @@ ${actionBlocks}
 
   return {
     scriptText,
-    actionCount: actions.length,
+    actionCount,
     assertionCount,
     sourceId: source.id,
     timeoutMs: DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS,

@@ -45,6 +45,8 @@ type RecorderAuthoringMessages = {
   assertVisible: string;
   assertDisabled: string;
   assertNotDisabled: string;
+  assertChecked: string;
+  assertUnchecked: string;
   assertText: string;
   assertValue: string;
   assertAria: string;
@@ -75,6 +77,8 @@ type RecorderAuthoringMessages = {
     assertVisible: string;
     assertDisabled: string;
     assertNotDisabled: string;
+    assertChecked: string;
+    assertUnchecked: string;
     assertText: string;
     assertValue: string;
     assertAria: string;
@@ -130,6 +134,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertVisible: 'Visible',
       assertDisabled: 'Disabled',
       assertNotDisabled: 'Not disabled',
+      assertChecked: 'Checked',
+      assertUnchecked: 'Unchecked',
       assertText: 'Text',
       assertValue: 'Value',
       assertAria: 'ARIA',
@@ -160,6 +166,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertVisible: 'Pick an element and record an assertion that it should be visible.',
         assertDisabled: 'Pick an element and record an assertion that it should be disabled.',
         assertNotDisabled: 'Pick an element and record an assertion that it should not be disabled.',
+        assertChecked: 'Pick a checkbox/radio, label, or parent container and record that it should be checked.',
+        assertUnchecked: 'Pick a checkbox/radio, label, or parent container and record that it should be unchecked.',
         assertText: 'Pick an element and record an assertion for its current text.',
         assertValue: 'Pick a form control and record an assertion for its current value.',
         assertAria: 'Pick a region and record an ARIA snapshot assertion for its accessibility structure.',
@@ -208,6 +216,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertVisible: '可见性',
       assertDisabled: '禁用',
       assertNotDisabled: '非禁用',
+      assertChecked: '勾选',
+      assertUnchecked: '未勾选',
       assertText: '文本',
       assertValue: '值',
       assertAria: 'ARIA',
@@ -238,6 +248,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertVisible: '选择页面元素，并录制“该元素应该可见”的断言。',
         assertDisabled: '选择页面元素，并录制“该元素应该处于禁用状态”的断言。',
         assertNotDisabled: '选择页面元素，并录制“该元素不应处于禁用状态”的断言。',
+        assertChecked: '选择 checkbox/radio、label 或父容器，并录制“应处于勾选状态”的断言。',
+        assertUnchecked: '选择 checkbox/radio、label 或父容器，并录制“应处于未勾选状态”的断言。',
         assertText: '选择页面元素，并录制它当前文本内容的断言。',
         assertValue: '选择表单控件，并录制它当前 value 的断言。',
         assertAria: '选择页面区域，并录制它无障碍语义结构的 ARIA snapshot 断言。',
@@ -286,6 +298,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertVisible: '可見性',
       assertDisabled: '停用',
       assertNotDisabled: '非停用',
+      assertChecked: '勾選',
+      assertUnchecked: '未勾選',
       assertText: '文字',
       assertValue: '值',
       assertAria: 'ARIA',
@@ -316,6 +330,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertVisible: '選取頁面元素，並錄製「該元素應可見」的斷言。',
         assertDisabled: '選取頁面元素，並錄製「該元素應處於停用狀態」的斷言。',
         assertNotDisabled: '選取頁面元素，並錄製「該元素不應處於停用狀態」的斷言。',
+        assertChecked: '選取 checkbox/radio、label 或父容器，並錄製「應處於勾選狀態」的斷言。',
+        assertUnchecked: '選取 checkbox/radio、label 或父容器，並錄製「應處於未勾選狀態」的斷言。',
         assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
         assertValue: '選取表單控制項，並錄製它目前 value 的斷言。',
         assertAria: '選取頁面區域，並錄製它無障礙語意結構的 ARIA snapshot 斷言。',
@@ -364,6 +380,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertVisible: '表示',
       assertDisabled: '無効',
       assertNotDisabled: '非無効',
+      assertChecked: 'チェック済み',
+      assertUnchecked: '未チェック',
       assertText: 'テキスト',
       assertValue: '値',
       assertAria: 'ARIA',
@@ -394,6 +412,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertVisible: '要素を選択し、その要素が表示されていることを確認するアサーションを録画します。',
         assertDisabled: '要素を選択し、その要素が無効状態であることを確認するアサーションを録画します。',
         assertNotDisabled: '要素を選択し、その要素が無効状態ではないことを確認するアサーションを録画します。',
+        assertChecked: 'checkbox/radio、label、または親コンテナを選択し、チェック済みであることを確認するアサーションを録画します。',
+        assertUnchecked: 'checkbox/radio、label、または親コンテナを選択し、未チェックであることを確認するアサーションを録画します。',
         assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',
         assertValue: 'フォームコントロールを選択し、現在の value を確認するアサーションを録画します。',
         assertAria: '領域を選択し、アクセシビリティ構造の ARIA snapshot アサーションを録画します。',
