@@ -61,10 +61,7 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
     validateRecordedActionBlock(action);
 
   const assertionCount = actions.filter(isAssertionAction).length;
-  const actionBlocks = actions.map(action => [
-    '  ensureNotAborted();',
-    indentBlock(action, 2),
-  ].join('\n')).join('\n\n');
+  const actionBlocks = actions.map(action => indentBlock(action, 2)).join('\n\n');
 
   const scriptText = `function createRecordingExpect(locator, negated = false) {
   function fail(message) {
@@ -117,16 +114,11 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
   };
 }
 
-export default async function recording(context) {
-  const page = context.playwright.page;
+export default async function recording(page, context) {
   const expect = createRecordingExpect;
   const recordingTimeoutMs = ${DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS};
   page.setDefaultTimeout?.(recordingTimeoutMs);
   page.setDefaultNavigationTimeout?.(recordingTimeoutMs);
-  const ensureNotAborted = () => {
-    if (context.abortSignal?.aborted)
-      throw new Error('recorded script aborted');
-  };
 
 ${actionBlocks}
 

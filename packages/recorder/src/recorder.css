@@ -224,6 +224,23 @@
   gap: 10px;
 }
 
+.recorder-authoring-step-context {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--sa-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .recorder-authoring-toolbar {
   display: flex;
   align-items: center;

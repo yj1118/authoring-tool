@@ -115,6 +115,8 @@ export type SelectorAuthoringDiagnostic = {
 export type RecordingLaunchContext = {
   caseId: string;
   stepId: string;
+  stepIndex?: number;
+  stepText?: string;
   source: string;
   moduleKind: string;
   startUrl: string;
@@ -185,4 +187,5 @@ export interface RecorderFrontend {
   callLogsUpdated: (params: { callLogs: CallLog[] }) => void;
   elementPicked: (params: { elementInfo: ElementInfo, userGesture?: boolean }) => void;
   selectorAuthoringDiagnosticChanged: (params: { diagnostic: SelectorAuthoringDiagnostic | null }) => void;
+  recordingLaunchContextChanged: (params: { launchContext: RecordingLaunchContext }) => void;
 }

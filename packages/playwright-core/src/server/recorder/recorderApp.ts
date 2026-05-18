@@ -34,7 +34,7 @@ import { resolveAuthoringLocaleFromEnv, resolveAuthoringModeConfigFromEnv, type 
 import { computeAuthoringDockLayout as computeAuthoringDockLayoutFromMetrics, normalizeAuthoringScreenMetrics } from './authoringGeometry';
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
 import { AuthoringSingleton } from './authoringSingleton';
-import { getRecordingLaunchContext, saveRecordingThroughClient } from './recordingAuthoringPersistence';
+import { getRecordingLaunchContext, saveRecordingThroughClient, updateRecordingLaunchContext } from './recordingAuthoringPersistence';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
@@ -291,7 +291,9 @@ export class RecorderApp {
     const recorderApp = new RecorderApp(recorder, appParams, page, appContext._browser.options.wsEndpoint, authoringModeConfig);
     await recorderApp._init(inspectedContext);
     if (authoringModeConfig) {
-      recorderApp._authoringSingleton = await AuthoringSingleton.start(authoringModeConfig.mode, async () => {
+      recorderApp._authoringSingleton = await AuthoringSingleton.start(authoringModeConfig.mode, async request => {
+        if (authoringModeConfig.mode === 'recorder' && request.recordingLaunchPayload)
+          await recorderApp.switchRecordingLaunchContext(request.recordingLaunchPayload);
         await recorderApp.activate();
       }).catch(error => {
         console.warn(`[${authoringModeConfig.sessionIdPrefix}] Failed to start singleton server: ${error instanceof Error ? error.message : String(error)}`); // eslint-disable-line no-console
@@ -443,6 +445,22 @@ export class RecorderApp {
     const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
     await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle, browserProcessId).catch(() => {});
     await inspectedPage?.bringToFront(nullProgress).catch(() => {});
+  }
+
+  async switchRecordingLaunchContext(payload: unknown) {
+    const launchContext = updateRecordingLaunchContext(payload);
+    if (!launchContext)
+      return;
+
+    await this._recorder.setMode('standby').catch(() => {});
+    await this._recorder.setPositionActionRecordingEnabled(false).catch(() => {});
+    this._actions = [];
+    this._userSources = [];
+    this._recorderSources = [];
+    this._recorder.clear();
+    this._updateActions('reveal');
+    this._frontend.recordingLaunchContextChanged({ launchContext });
+    this._frontend.modeChanged({ mode: this._recorder.mode() });
   }
 }
 

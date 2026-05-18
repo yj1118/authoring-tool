@@ -86,6 +86,14 @@ export const RecorderAuthoringApp: React.FC = () => {
           setStatus(failedStatus(recordingReasonCodes.pageLoadFailed, diagnostic.message));
         }
       },
+      recordingLaunchContextChanged: ({ launchContext }) => {
+        setLaunchContext(launchContext);
+        setMode('standby');
+        setPositionActionRecordingEnabledState(false);
+        setSources([]);
+        setDeletedActionKeys(new Set());
+        setStatus({ kind: 'ready' });
+      },
     };
     window.dispatch = (data: { method: string; params?: any }) => {
       (dispatcher as any)[data.method]?.call(dispatcher, data.params);
@@ -260,9 +268,14 @@ export const RecorderAuthoringApp: React.FC = () => {
       ? `${status.reasonCode}: ${status.message}`
       : i18n.status[status.kind as RecorderStatusKey];
   const failureAdvice = status.kind === 'failed' ? buildFailureAdvice(status.reasonCode, status.message, i18n) : null;
+  const stepContextLabel = formatStepContextLabel(launchContext, locale, i18n.noLaunchContext);
 
   return <div className='recorder'>
     <div className='recorder-authoring-main' aria-busy={isSaving}>
+      <div className='recorder-authoring-step-context' title={stepContextLabel}>
+        {stepContextLabel}
+      </div>
+
       <div className='recorder-authoring-toolbar'>
         {modeButtons.map(button => {
           const isActive = mode === button.mode;
@@ -334,6 +347,38 @@ export const RecorderAuthoringApp: React.FC = () => {
     </div> : null}
   </div>;
 };
+
+function formatStepContextLabel(launchContext: RecordingLaunchContext | null, locale: RecorderLocale, fallback: string): string {
+  if (!launchContext)
+    return fallback;
+  const stepIndex = typeof launchContext.stepIndex === 'number' && Number.isFinite(launchContext.stepIndex) && launchContext.stepIndex > 0
+    ? Math.floor(launchContext.stepIndex)
+    : undefined;
+  const stepText = launchContext.stepText?.trim();
+  if (locale === 'ja-JP') {
+    if (stepIndex && stepText)
+      return `ステップ ${stepIndex} ${stepText}`;
+    if (stepIndex)
+      return `ステップ ${stepIndex}`;
+    if (stepText)
+      return `現在のステップ ${stepText}`;
+  }
+  if (locale === 'en') {
+    if (stepIndex && stepText)
+      return `Step ${stepIndex}: ${stepText}`;
+    if (stepIndex)
+      return `Step ${stepIndex}`;
+    if (stepText)
+      return `Current step: ${stepText}`;
+  }
+  if (stepIndex && stepText)
+    return `步骤 ${stepIndex} ${stepText}`;
+  if (stepIndex)
+    return `步骤 ${stepIndex}`;
+  if (stepText)
+    return `当前步骤 ${stepText}`;
+  return launchContext.stepId || fallback;
+}
 
 function buildFailureAdvice(reasonCode: string, message: string, i18n: ReturnType<typeof getRecorderAuthoringMessages>): string {
   const normalizedReason = reasonCode.toLowerCase();

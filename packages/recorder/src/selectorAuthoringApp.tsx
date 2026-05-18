@@ -63,6 +63,7 @@ export const SelectorAuthoringApp: React.FC = () => {
       pauseStateChanged: () => {},
       callLogsUpdated: (_params: { callLogs: CallLog[] }) => {},
       sourceRevealRequested: () => {},
+      recordingLaunchContextChanged: () => {},
       elementPicked: ({ elementInfo }) => {
         const entry: SelectorEntry = {
           id: `selector-${++nextEntryId.current}`,

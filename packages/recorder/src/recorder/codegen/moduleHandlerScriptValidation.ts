@@ -56,9 +56,9 @@ function stripExportDefaultForSyntaxCheck(scriptText: string): string {
   if (replaced === scriptText) {
     throw createRecordingAuthoringError({
       reasonCode: recordingReasonCodes.scriptValidationFailed,
-      message: 'Recorded script must export default async function recording(context).',
+      message: 'Recorded script must export default async function recording(page, context).',
       details: {
-        expectedExport: 'export default async function recording(context)',
+        expectedExport: 'export default async function recording(page, context)',
       },
     });
   }
@@ -82,12 +82,12 @@ export function validateRecordedActionBlock(actionText: string): void {
 }
 
 export function validateGeneratedModuleHandlerScript(scriptText: string): void {
-  if (!/export\s+default\s+async\s+function\s+recording\s*\(\s*context\s*\)/u.test(scriptText)) {
+  if (!/export\s+default\s+async\s+function\s+recording\s*\(\s*page\s*,\s*context\s*\)/u.test(scriptText)) {
     throw createRecordingAuthoringError({
       reasonCode: recordingReasonCodes.scriptValidationFailed,
-      message: 'Recorded script must export default async function recording(context).',
+      message: 'Recorded script must export default async function recording(page, context).',
       details: {
-        expectedExport: 'export default async function recording(context)',
+        expectedExport: 'export default async function recording(page, context)',
       },
     });
   }

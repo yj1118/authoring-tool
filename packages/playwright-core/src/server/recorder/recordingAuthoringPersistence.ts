@@ -17,6 +17,8 @@
 import type { RecordingLaunchContext, RecordingSaveRequest, RecordingSaveResult } from '@recorder/recorderTypes';
 import { createRecordingAuthoringError, recordingReasonCodes, type RecordingReasonCode } from '@recorder/recorder/errors/recordingErrors';
 
+let currentLaunchContext: RecordingLaunchContext | null | undefined;
+
 function normalizeOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
@@ -50,17 +52,13 @@ function normalizeHeaders(value: unknown): Record<string, string> | undefined {
   return Object.keys(headers).length ? headers : undefined;
 }
 
-function readLaunchContextFromEnv(): RecordingLaunchContext | null {
-  const raw = normalizeOptionalString(process.env.AUTHORING_TOOL_RECORDING_LAUNCH_PAYLOAD_JSON);
-  if (!raw)
-    return null;
+function normalizeOptionalPositiveInteger(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)
+    return undefined;
+  return value;
+}
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
+function parseLaunchContextPayload(parsed: unknown): RecordingLaunchContext | null {
   if (!isRecord(parsed))
     return null;
 
@@ -73,6 +71,8 @@ function readLaunchContextFromEnv(): RecordingLaunchContext | null {
   return {
     caseId,
     stepId,
+    stepIndex: normalizeOptionalPositiveInteger(parsed.stepIndex),
+    stepText: normalizeOptionalString(parsed.stepText),
     startUrl,
     source: normalizeOptionalString(parsed.source) ?? 'client.manual',
     moduleKind: normalizeOptionalString(parsed.moduleKind) ?? 'manual.replay',
@@ -82,6 +82,18 @@ function readLaunchContextFromEnv(): RecordingLaunchContext | null {
     recordingBridgeBaseUrl: normalizeOptionalString(parsed.recordingBridgeBaseUrl),
     recordingBridgeToken: normalizeOptionalString(parsed.recordingBridgeToken),
   };
+}
+
+function readLaunchContextFromEnv(): RecordingLaunchContext | null {
+  const raw = normalizeOptionalString(process.env.AUTHORING_TOOL_RECORDING_LAUNCH_PAYLOAD_JSON);
+  if (!raw)
+    return null;
+
+  try {
+    return parseLaunchContextPayload(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }
 
 async function readJsonResponse(response: Response, action: string): Promise<unknown> {
@@ -124,11 +136,20 @@ function mapClientReasonCode(reasonCode: string | undefined): RecordingReasonCod
 }
 
 export function getRecordingLaunchContext(): RecordingLaunchContext | null {
-  return readLaunchContextFromEnv();
+  if (currentLaunchContext === undefined)
+    currentLaunchContext = readLaunchContextFromEnv();
+  return currentLaunchContext;
+}
+
+export function updateRecordingLaunchContext(payload: unknown): RecordingLaunchContext | null {
+  const nextContext = parseLaunchContextPayload(payload);
+  if (nextContext)
+    currentLaunchContext = nextContext;
+  return nextContext;
 }
 
 export async function saveRecordingThroughClient(request: RecordingSaveRequest): Promise<RecordingSaveResult> {
-  const launchContext = readLaunchContextFromEnv();
+  const launchContext = getRecordingLaunchContext();
   if (!launchContext?.clientBaseUrl)
     throw new Error('Recorder launch context is missing clientBaseUrl.');
   if (!launchContext.orchestratorBaseUrl && (!launchContext.recordingBridgeBaseUrl || !launchContext.recordingBridgeToken))

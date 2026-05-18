@@ -309,10 +309,22 @@ export async function open(options: Options, url: string | undefined) {
   await openPage(context, url);
 }
 
+function recordingActivationPayloadFromEnv(): { recordingLaunchPayload?: unknown } | undefined {
+  const raw = process.env.AUTHORING_TOOL_RECORDING_LAUNCH_PAYLOAD_JSON?.trim();
+  if (!raw)
+    return undefined;
+  try {
+    return { recordingLaunchPayload: JSON.parse(raw) };
+  } catch {
+    return undefined;
+  }
+}
+
 export async function codegen(options: Options & { target: string, output?: string, testIdAttribute?: string }, url: string | undefined) {
   const { target: language, output: outputFile, testIdAttribute: testIdAttributeName } = options;
   const authoringModeConfig = resolveAuthoringModeConfigFromEnv();
-  if (authoringModeConfig && await tryActivateExistingAuthoringInstance(authoringModeConfig.mode)) {
+  const activationPayload = authoringModeConfig?.mode === 'recorder' ? recordingActivationPayloadFromEnv() : undefined;
+  if (authoringModeConfig && await tryActivateExistingAuthoringInstance(authoringModeConfig.mode, activationPayload)) {
     await tryEnsureExistingAuthoringToolWindowVisible(authoringModeConfig.mode).catch(() => false);
     return;
   }

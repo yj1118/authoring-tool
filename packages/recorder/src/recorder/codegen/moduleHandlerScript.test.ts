@@ -17,7 +17,7 @@ function sourceWithActions(actions: string[]): Source {
   };
 }
 
-test('generates a ModuleHandlerContext recording script from Playwright actions and assertions', () => {
+test('generates a Playwright Page recording script from Playwright actions and assertions', () => {
   const generated = generateModuleHandlerScriptFromSources([
     sourceWithActions([
       "await page.getByText('Submit').click();",
@@ -26,8 +26,8 @@ test('generates a ModuleHandlerContext recording script from Playwright actions 
     ]),
   ]);
 
-  assert.match(generated.scriptText, /export default async function recording\(context\)/u);
-  assert.match(generated.scriptText, /const page = context\.playwright\.page/u);
+  assert.match(generated.scriptText, /export default async function recording\(page, context\)/u);
+  assert.doesNotMatch(generated.scriptText, /context\.playwright\.page/u);
   assert.doesNotMatch(generated.scriptText, /\btest\s*\(/u);
   assert.doesNotMatch(generated.scriptText, /\b(?:browser|context)\.newPage\s*\(/u);
   assert.match(generated.scriptText, /createRecordingExpect/u);
