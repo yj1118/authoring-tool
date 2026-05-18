@@ -243,14 +243,32 @@
 
 .recorder-authoring-toolbar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--sa-border);
   border-radius: 12px;
   background: linear-gradient(180deg, var(--sa-panel-bg), var(--sa-surface-strong));
   box-shadow: var(--sa-shadow-sm);
+}
+
+.recorder-authoring-toolbar-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recorder-authoring-toolbar-row-assertions {
+  padding-top: 8px;
+  border-top: 1px solid var(--sa-border);
+}
+
+.recorder-authoring-toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 12px;
 }
 
 .recorder-authoring-status {
@@ -832,6 +850,18 @@
   .selector-authoring-primary-button {
     padding: 7px 12px;
     font-size: 11px;
+  }
+
+  .recorder-authoring-toolbar {
+    padding: 8px;
+  }
+
+  .recorder-authoring-toolbar-row {
+    gap: 6px;
+  }
+
+  .recorder-authoring-toolbar-spacer {
+    display: none;
   }
 
   .recorder-authoring-action-row {

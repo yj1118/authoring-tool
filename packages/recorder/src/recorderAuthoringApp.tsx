@@ -29,6 +29,7 @@ import {
   launchStartedStatus,
   modeChangedStatus,
   pageNavigatedStatus,
+  type RecorderCaptureMode,
   type RecorderStatus,
   type RecorderStatusKey,
 } from './recorder/state/recorderStatus';
@@ -38,6 +39,12 @@ const launchContextTimeoutMs = 8000;
 type ActionPreviewEntry = {
   key: string;
   text: string;
+};
+
+type RecorderModeButton = {
+  mode: RecorderCaptureMode;
+  label: string;
+  tooltip: string;
 };
 
 export const RecorderAuthoringApp: React.FC = () => {
@@ -186,14 +193,31 @@ export const RecorderAuthoringApp: React.FC = () => {
     await applyPositionActionRecordingEnabled(false);
   }, [applyPositionActionRecordingEnabled, positionActionRecordingEnabled]);
 
-  const modeButtons = React.useMemo(() => [
-    { mode: 'recording' as const, label: i18n.record, tooltip: i18n.tooltip.record },
-    { mode: 'scrollIntoView' as const, label: i18n.locate, tooltip: i18n.tooltip.locate },
-    { mode: 'assertingVisibility' as const, label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
-    { mode: 'assertingText' as const, label: i18n.assertText, tooltip: i18n.tooltip.assertText },
-    { mode: 'assertingValue' as const, label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },
-    { mode: 'assertingSnapshot' as const, label: i18n.assertAria, tooltip: i18n.tooltip.assertAria },
+  const actionModeButtons = React.useMemo<RecorderModeButton[]>(() => [
+    { mode: 'recording', label: i18n.record, tooltip: i18n.tooltip.record },
+    { mode: 'scrollIntoView', label: i18n.locate, tooltip: i18n.tooltip.locate },
   ], [i18n]);
+
+  const assertionModeButtons = React.useMemo<RecorderModeButton[]>(() => [
+    { mode: 'assertingVisibility', label: i18n.assertVisible, tooltip: i18n.tooltip.assertVisible },
+    { mode: 'assertingText', label: i18n.assertText, tooltip: i18n.tooltip.assertText },
+    { mode: 'assertingValue', label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },
+    { mode: 'assertingSnapshot', label: i18n.assertAria, tooltip: i18n.tooltip.assertAria },
+  ], [i18n]);
+
+  const renderModeButton = React.useCallback((button: RecorderModeButton) => {
+    const isActive = mode === button.mode;
+    return <button
+      className={`selector-authoring-secondary-button ${isActive ? 'toggled' : ''}`}
+      disabled={isSaving}
+      key={button.mode}
+      onClick={() => setRecorderMode(isActive ? 'standby' : button.mode)}
+      title={isActive ? i18n.tooltip.stop : button.tooltip}
+      type='button'
+    >
+      {isActive ? i18n.stop : button.label}
+    </button>;
+  }, [i18n.stop, i18n.tooltip.stop, isSaving, mode, setRecorderMode]);
 
   const clear = React.useCallback(() => {
     if (isSaving)
@@ -277,30 +301,24 @@ export const RecorderAuthoringApp: React.FC = () => {
       </div>
 
       <div className='recorder-authoring-toolbar'>
-        {modeButtons.map(button => {
-          const isActive = mode === button.mode;
-          return <button
-            className={`selector-authoring-secondary-button ${isActive ? 'toggled' : ''}`}
+        <div className='recorder-authoring-toolbar-row' aria-label={`${i18n.record} / ${i18n.locate}`}>
+          {actionModeButtons.map(renderModeButton)}
+          <button
+            className={`selector-authoring-secondary-button ${positionActionRecordingEnabled ? 'toggled' : ''}`}
             disabled={isSaving}
-            key={button.mode}
-            onClick={() => setRecorderMode(isActive ? 'standby' : button.mode)}
-            title={isActive ? i18n.tooltip.stop : button.tooltip}
+            onClick={() => setPositionActionRecordingEnabled(!positionActionRecordingEnabled)}
+            title={i18n.tooltip.recordScroll}
             type='button'
           >
-            {isActive ? i18n.stop : button.label}
-          </button>;
-        })}
-        <button
-          className={`selector-authoring-secondary-button ${positionActionRecordingEnabled ? 'toggled' : ''}`}
-          disabled={isSaving}
-          onClick={() => setPositionActionRecordingEnabled(!positionActionRecordingEnabled)}
-          title={i18n.tooltip.recordScroll}
-          type='button'
-        >
-          {i18n.recordScroll}
-        </button>
-        <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
-        <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
+            {i18n.recordScroll}
+          </button>
+          <span className='recorder-authoring-toolbar-spacer' aria-hidden='true' />
+          <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
+          <button className='selector-authoring-primary-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
+        </div>
+        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertAria}`}>
+          {assertionModeButtons.map(renderModeButton)}
+        </div>
       </div>
 
       <div className='recorder-authoring-status'>
