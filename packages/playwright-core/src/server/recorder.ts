@@ -141,7 +141,7 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
 
     this._signalProcessor = new RecorderSignalProcessor({
       addAction: (actionInContext: actions.ActionInContext) => {
-        if (this._enabled)
+        if (this._enabled || this._shouldEmitPositionAction(actionInContext.action))
           this.emit(RecorderEvent.ActionAdded, actionInContext);
       },
       addSignal: (signal: actions.SignalInContext) => {
@@ -535,6 +535,10 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
 
   private _setEnabled(enabled: boolean) {
     this._enabled = enabled;
+  }
+
+  private _shouldEmitPositionAction(action: actions.Action): boolean {
+    return this._positionActionRecordingEnabled && action.name === 'scroll';
   }
 
   private async _onPage(page: Page) {

@@ -23,18 +23,18 @@ export type CheckedControlResolutionKind =
 
 export type CheckedControlResolution =
   | {
-      ok: true;
-      control: HTMLInputElement;
-      highlightElement: Element;
-      kind: CheckedControlResolutionKind;
-      matchCount: number;
-    }
+    ok: true;
+    control: HTMLInputElement;
+    highlightElement: Element;
+    kind: CheckedControlResolutionKind;
+    matchCount: number;
+  }
   | {
-      ok: false;
-      reason: 'unsupported' | 'ambiguous';
-      kind: CheckedControlResolutionKind | null;
-      matchCount: number;
-    };
+    ok: false;
+    reason: 'unsupported' | 'ambiguous';
+    kind: CheckedControlResolutionKind | null;
+    matchCount: number;
+  };
 
 const checkedControlSelector = 'input[type=checkbox], input[type=radio]';
 

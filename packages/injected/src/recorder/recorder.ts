@@ -38,19 +38,6 @@ type RecorderOptions = {
   recordScrollActions?: boolean;
 };
 
-function isRecorderCaptureMode(mode: Mode): boolean {
-  return mode === 'recording'
-    || mode === 'scrollIntoView'
-    || mode === 'assertingVisibility'
-    || mode === 'assertingDisabled'
-    || mode === 'assertingNotDisabled'
-    || mode === 'assertingChecked'
-    || mode === 'assertingUnchecked'
-    || mode === 'assertingText'
-    || mode === 'assertingValue'
-    || mode === 'assertingSnapshot';
-}
-
 const HighlightColors = {
   multiple: '#f6b26b7f',
   single: '#6fa8dc7f',
@@ -1809,8 +1796,6 @@ export class Recorder {
     if (!this._recordScrollActions)
       return false;
     if (!this.state.positionActionRecordingEnabled)
-      return false;
-    if (!isRecorderCaptureMode(this.state.mode))
       return false;
     return this._currentTool.allowsPositionActionRecording?.() ?? true;
   }

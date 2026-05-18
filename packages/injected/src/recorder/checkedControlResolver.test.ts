@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) Microsoft Corporation.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -61,7 +77,7 @@ function label(children: FakeElement[], control?: FakeElement | null): FakeEleme
   return fake;
 }
 
-test('resolves checked controls from direct inputs, labels, and parent containers', () => {
+void test('resolves checked controls from direct inputs, labels, and parent containers', () => {
   const checkbox = input('checkbox');
   assert.deepEqual(resolveCheckedControlTarget(checkbox as unknown as Element), {
     ok: true,
@@ -87,13 +103,13 @@ test('resolves checked controls from direct inputs, labels, and parent container
   assert.equal(parentResult.kind, 'descendant');
 
   const rowText = element('SPAN');
-  const row = element('DIV', [rowText, input('checkbox')]);
+  element('DIV', [rowText, input('checkbox')]);
   const ancestorResult = resolveCheckedControlTarget(rowText as unknown as Element);
   assert.equal(ancestorResult.ok, true);
   assert.equal(ancestorResult.kind, 'ancestor_descendant');
 });
 
-test('does not resolve ambiguous checkbox/radio containers', () => {
+void test('does not resolve ambiguous checkbox/radio containers', () => {
   const group = element('DIV', [input('radio'), input('radio')]);
   const result = resolveCheckedControlTarget(group as unknown as Element);
 
