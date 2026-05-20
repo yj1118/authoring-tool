@@ -16,6 +16,7 @@
 
 import type { RecordingLaunchContext, RecordingSaveRequest, RecordingSaveResult } from '@recorder/recorderTypes';
 import { createRecordingAuthoringError, recordingReasonCodes, type RecordingReasonCode } from '@recorder/recorder/errors/recordingErrors';
+import { parseRecordingTargetFromPayload, recordingTargetModuleKind } from '@recorder/recorder/targets/recordingTargets';
 
 let currentLaunchContext: RecordingLaunchContext | null | undefined;
 
@@ -52,30 +53,26 @@ function normalizeHeaders(value: unknown): Record<string, string> | undefined {
   return Object.keys(headers).length ? headers : undefined;
 }
 
-function normalizeOptionalPositiveInteger(value: unknown): number | undefined {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)
-    return undefined;
-  return value;
-}
-
 function parseLaunchContextPayload(parsed: unknown): RecordingLaunchContext | null {
   if (!isRecord(parsed))
     return null;
 
-  const caseId = normalizeOptionalString(parsed.caseId);
-  const stepId = normalizeOptionalString(parsed.stepId);
+  const target = parseRecordingTargetFromPayload(parsed);
   const startUrl = normalizeOptionalString(parsed.startUrl);
-  if (!caseId || !stepId || !startUrl)
+  if (!target || !startUrl)
     return null;
 
   return {
-    caseId,
-    stepId,
-    stepIndex: normalizeOptionalPositiveInteger(parsed.stepIndex),
-    stepText: normalizeOptionalString(parsed.stepText),
+    target,
+    caseId: target.caseId,
+    ...(target.kind === 'case_step' ? {
+      stepId: target.stepId,
+      stepIndex: target.stepIndex,
+      stepText: target.stepText,
+    } : {}),
     startUrl,
     source: normalizeOptionalString(parsed.source) ?? 'client.manual',
-    moduleKind: normalizeOptionalString(parsed.moduleKind) ?? 'manual.replay',
+    moduleKind: normalizeOptionalString(parsed.moduleKind) ?? recordingTargetModuleKind(target),
     clientBaseUrl: normalizeOptionalString(parsed.clientBaseUrl) ?? normalizeOptionalString(process.env.AUTHORING_TOOL_CLIENT_BASE_URL),
     orchestratorBaseUrl: normalizeOptionalString(parsed.orchestratorBaseUrl),
     orchestratorHeaders: normalizeHeaders(parsed.orchestratorHeaders),
@@ -164,8 +161,9 @@ export async function saveRecordingThroughClient(request: RecordingSaveRequest):
         'content-type': 'application/json',
       },
       body: JSON.stringify({
+        target: launchContext.target,
         caseId: launchContext.caseId,
-        stepId: launchContext.stepId,
+        ...(launchContext.stepId ? { stepId: launchContext.stepId } : {}),
         orchestratorBaseUrl: launchContext.orchestratorBaseUrl,
         orchestratorHeaders: launchContext.orchestratorHeaders,
         recordingBridgeBaseUrl: launchContext.recordingBridgeBaseUrl,

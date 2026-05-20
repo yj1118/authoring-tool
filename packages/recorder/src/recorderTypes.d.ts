@@ -116,9 +116,33 @@ export type SelectorAuthoringDiagnostic = {
   severity: 'warning' | 'error';
 };
 
-export type RecordingLaunchContext = {
+export type CaseStepRecordingTarget = {
+  kind: 'case_step';
   caseId: string;
   stepId: string;
+  stepIndex?: number;
+  stepText?: string;
+  moduleKind?: string;
+};
+
+export type ExecutionTaskRecordingTarget = {
+  kind: 'execution_task';
+  caseId: string;
+  caseVersionId: string;
+  taskId: string;
+  sourceStepIds: string[];
+  instructionHash: string;
+  planVersion: string;
+  title?: string;
+  instruction?: string;
+};
+
+export type RecordingTarget = CaseStepRecordingTarget | ExecutionTaskRecordingTarget;
+
+export type RecordingLaunchContext = {
+  target: RecordingTarget;
+  caseId: string;
+  stepId?: string;
   stepIndex?: number;
   stepText?: string;
   source: string;
@@ -144,8 +168,11 @@ export type RecordingSaveRequest = {
 export type RecordingSaveResult = {
   ok: boolean;
   recordingId?: string;
+  packageId?: string;
   caseId?: string;
+  caseVersionId?: string;
   stepId?: string;
+  taskId?: string;
   status?: string;
   manifestSchema?: string;
   manifestLogicalPath?: string;

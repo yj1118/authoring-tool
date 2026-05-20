@@ -39,6 +39,7 @@ import {
   buildAssertionModeButtons,
   type RecorderModeButton,
 } from './recorder/toolbar/recorderToolCatalog';
+import { recordingTargetViewModel } from './recorder/targets/recordingTargets';
 
 const launchContextTimeoutMs = 8000;
 
@@ -253,7 +254,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     } finally {
       saveInFlightRef.current = false;
     }
-  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, i18n.saveFailed, launchContext?.startUrl, mode, pageUrl]);
+  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, i18n.saveFailed, launchContext, mode, pageUrl]);
 
   const hasGeneratedError = !generatedSummary.ok && previewActions.length > 0;
   const statusTone = status.kind === 'saved'
@@ -342,33 +343,8 @@ export const RecorderAuthoringApp: React.FC = () => {
 function formatStepContextLabel(launchContext: RecordingLaunchContext | null, locale: RecorderLocale, fallback: string): string {
   if (!launchContext)
     return fallback;
-  const stepIndex = typeof launchContext.stepIndex === 'number' && Number.isFinite(launchContext.stepIndex) && launchContext.stepIndex > 0
-    ? Math.floor(launchContext.stepIndex)
-    : undefined;
-  const stepText = launchContext.stepText?.trim();
-  if (locale === 'ja-JP') {
-    if (stepIndex && stepText)
-      return `ステップ ${stepIndex} ${stepText}`;
-    if (stepIndex)
-      return `ステップ ${stepIndex}`;
-    if (stepText)
-      return `現在のステップ ${stepText}`;
-  }
-  if (locale === 'en') {
-    if (stepIndex && stepText)
-      return `Step ${stepIndex}: ${stepText}`;
-    if (stepIndex)
-      return `Step ${stepIndex}`;
-    if (stepText)
-      return `Current step: ${stepText}`;
-  }
-  if (stepIndex && stepText)
-    return `步骤 ${stepIndex} ${stepText}`;
-  if (stepIndex)
-    return `步骤 ${stepIndex}`;
-  if (stepText)
-    return `当前步骤 ${stepText}`;
-  return launchContext.stepId || fallback;
+  const viewModel = recordingTargetViewModel(launchContext.target, locale);
+  return viewModel.body ? `${viewModel.title}: ${viewModel.body}` : viewModel.title;
 }
 
 function buildFailureAdvice(reasonCode: string, message: string, i18n: ReturnType<typeof getRecorderAuthoringMessages>): string {
