@@ -39,7 +39,11 @@ import {
   buildAssertionModeButtons,
   type RecorderModeButton,
 } from './recorder/toolbar/recorderToolCatalog';
-import { recordingTargetViewModel } from './recorder/targets/recordingTargets';
+import {
+  ActiveTargetController,
+  recordingTargetKey,
+  recordingTargetViewModel,
+} from './recorder/targets/recordingTargets';
 
 const launchContextTimeoutMs = 8000;
 
@@ -53,9 +57,30 @@ export const RecorderAuthoringApp: React.FC = () => {
   const [deletedActionKeys, setDeletedActionKeys] = React.useState<Set<string>>(() => new Set());
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
+  const [targetContexts, setTargetContexts] = React.useState<RecordingLaunchContext[]>([]);
   const [status, setStatus] = React.useState<RecorderStatus>({ kind: 'idle' });
   const [positionActionRecordingEnabled, setPositionActionRecordingEnabledState] = React.useState(false);
   const saveInFlightRef = React.useRef(false);
+
+  const upsertTargetContext = React.useCallback((context: RecordingLaunchContext) => {
+    setTargetContexts(current => {
+      const controller = new ActiveTargetController<RecordingLaunchContext>();
+      for (const item of current)
+        controller.upsert(item);
+      controller.upsert(context);
+      return controller.contexts();
+    });
+  }, []);
+
+  const activateLaunchContext = React.useCallback((context: RecordingLaunchContext) => {
+    upsertTargetContext(context);
+    setLaunchContext(context);
+    setMode('standby');
+    setPositionActionRecordingEnabledState(false);
+    setSources([]);
+    setDeletedActionKeys(new Set());
+    setStatus({ kind: 'ready' });
+  }, [upsertTargetContext]);
 
   React.useEffect(() => {
     document.title = pageUrl ? `${i18n.windowTitle} - ${pageUrl}` : i18n.windowTitle;
@@ -90,18 +115,13 @@ export const RecorderAuthoringApp: React.FC = () => {
         }
       },
       recordingLaunchContextChanged: ({ launchContext }) => {
-        setLaunchContext(launchContext);
-        setMode('standby');
-        setPositionActionRecordingEnabledState(false);
-        setSources([]);
-        setDeletedActionKeys(new Set());
-        setStatus({ kind: 'ready' });
+        activateLaunchContext(launchContext);
       },
     };
     window.dispatch = (data: { method: string; params?: any }) => {
       (dispatcher as any)[data.method]?.call(dispatcher, data.params);
     };
-  }, []);
+  }, [activateLaunchContext]);
 
   React.useEffect(() => {
     let disposed = false;
@@ -113,6 +133,8 @@ export const RecorderAuthoringApp: React.FC = () => {
     ).then(context => {
       if (disposed)
         return;
+      if (context)
+        upsertTargetContext(context);
       setLaunchContext(context);
       setStatus(current => launchReadyStatus(current));
     }).catch(error => {
@@ -124,7 +146,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     return () => {
       disposed = true;
     };
-  }, [backend]);
+  }, [backend, upsertTargetContext]);
 
   const editableSources = React.useMemo(() => applyDeletedActionKeys(sources, deletedActionKeys), [deletedActionKeys, sources]);
 
@@ -188,6 +210,31 @@ export const RecorderAuthoringApp: React.FC = () => {
       return;
     await applyPositionActionRecordingEnabled(false);
   }, [applyPositionActionRecordingEnabled, positionActionRecordingEnabled]);
+
+  const activeTargetKey = launchContext ? recordingTargetKey(launchContext.target) : undefined;
+  const targetItems = React.useMemo(() => {
+    const controller = new ActiveTargetController<RecordingLaunchContext>();
+    for (const context of targetContexts)
+      controller.upsert(context);
+    return controller.viewModels(locale);
+  }, [locale, targetContexts]);
+
+  const switchTarget = React.useCallback((nextContext: RecordingLaunchContext) => {
+    if (isSaving)
+      return;
+    const nextTargetKey = recordingTargetKey(nextContext.target);
+    if (nextTargetKey === activeTargetKey)
+      return;
+    void (async () => {
+      try {
+        await disablePositionActionRecordingIfNeeded();
+        await backend.switchRecordingLaunchContext({ launchContext: nextContext });
+      } catch (error) {
+        const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.launchFailed);
+        setStatus(failedStatus(normalized.reasonCode, normalized.message));
+      }
+    })();
+  }, [activeTargetKey, backend, disablePositionActionRecordingIfNeeded, isSaving]);
 
   const actionModeButtons = React.useMemo<RecorderModeButton[]>(() => buildActionModeButtons(i18n), [i18n]);
 
@@ -272,8 +319,33 @@ export const RecorderAuthoringApp: React.FC = () => {
 
   return <div className='recorder'>
     <div className='recorder-authoring-main' aria-busy={isSaving}>
-      <div className='recorder-authoring-step-context' title={stepContextLabel}>
-        {stepContextLabel}
+      <div className='recorder-authoring-target-panel'>
+        <div className='recorder-authoring-target-panel-header'>
+          <span>{i18n.targets}</span>
+          <span title={stepContextLabel}>{stepContextLabel}</span>
+        </div>
+        <div className='recorder-authoring-target-list' role='listbox' aria-label={i18n.targets}>
+          {targetItems.length ? targetItems.map(item => {
+            const isActiveTarget = item.viewModel.key === activeTargetKey;
+            return <button
+              aria-selected={isActiveTarget}
+              className={`recorder-authoring-target-item ${isActiveTarget ? 'active' : ''}`}
+              disabled={isSaving}
+              key={item.viewModel.key}
+              onClick={() => switchTarget(item.context)}
+              role='option'
+              title={item.viewModel.body ? `${item.viewModel.title}: ${item.viewModel.body}` : item.viewModel.title}
+              type='button'
+            >
+              <span className='recorder-authoring-target-title'>{item.viewModel.title}</span>
+              {item.viewModel.body ? <span className='recorder-authoring-target-body'>{item.viewModel.body}</span> : null}
+            </button>;
+          }) : (
+            <div className='recorder-authoring-step-context' title={stepContextLabel}>
+              {stepContextLabel}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className='recorder-authoring-toolbar'>

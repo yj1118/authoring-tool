@@ -204,6 +204,9 @@ export class RecorderApp {
       getRecordingLaunchContext: async () => {
         return getRecordingLaunchContext();
       },
+      switchRecordingLaunchContext: async (params: { launchContext: unknown }) => {
+        return await this.switchRecordingLaunchContext(params.launchContext);
+      },
       saveRecording: async params => {
         return await saveRecordingThroughClient(params);
       },
@@ -450,7 +453,7 @@ export class RecorderApp {
   async switchRecordingLaunchContext(payload: unknown) {
     const launchContext = updateRecordingLaunchContext(payload);
     if (!launchContext)
-      return;
+      return null;
 
     await this._recorder.setMode('standby').catch(() => {});
     await this._recorder.setPositionActionRecordingEnabled(false).catch(() => {});
@@ -461,6 +464,7 @@ export class RecorderApp {
     this._updateActions('reveal');
     this._frontend.recordingLaunchContextChanged({ launchContext });
     this._frontend.modeChanged({ mode: this._recorder.mode() });
+    return launchContext;
   }
 }
 

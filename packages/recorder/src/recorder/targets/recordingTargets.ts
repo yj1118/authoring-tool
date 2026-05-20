@@ -113,14 +113,22 @@ export function recordingTargetTitle(target: RecordingTarget, locale: RecorderLo
   if (target.kind === 'execution_task') {
     if (target.title)
       return target.title;
-    if (locale === 'zh-CN' || locale === 'zh-TW')
-      return `Task ${target.taskId}`;
+    if (locale === 'zh-CN')
+      return `任务 ${target.taskId}`;
+    if (locale === 'zh-TW')
+      return `任務 ${target.taskId}`;
     if (locale === 'ja-JP')
-      return `Task ${target.taskId}`;
+      return `タスク ${target.taskId}`;
     return `Task ${target.taskId}`;
   }
 
   if (target.stepIndex) {
+    if (locale === 'zh-CN')
+      return `步骤 ${target.stepIndex}`;
+    if (locale === 'zh-TW')
+      return `步驟 ${target.stepIndex}`;
+    if (locale === 'ja-JP')
+      return `ステップ ${target.stepIndex}`;
     if (locale === 'en')
       return `Step ${target.stepIndex}`;
     return `Step ${target.stepIndex}`;
@@ -156,6 +164,7 @@ export class RecordingTargetCatalog {
 
   upsert(target: RecordingTarget): string {
     const key = recordingTargetKey(target);
+    this._targets.delete(key);
     this._targets.set(key, target);
     this._activeTargetKey = key;
     return key;
@@ -178,27 +187,66 @@ export class RecordingTargetCatalog {
   }
 }
 
-export class DraftScriptStore<TSource> {
-  private _drafts = new Map<string, { sources: TSource[]; deletedActionKeys: string[] }>();
+export type ActiveTargetViewModel<TContext> = {
+  context: TContext;
+  viewModel: RecordingTargetViewModel;
+};
 
-  save(key: string, draft: { sources: TSource[]; deletedActionKeys: Iterable<string> }): void {
-    this._drafts.set(key, {
-      sources: [...draft.sources],
-      deletedActionKeys: [...draft.deletedActionKeys],
+export class ActiveTargetController<TContext extends { target: RecordingTarget }> {
+  private _catalog = new RecordingTargetCatalog();
+  private _contexts = new Map<string, TContext>();
+
+  upsert(context: TContext): string {
+    const key = this._catalog.upsert(context.target);
+    this._contexts.delete(key);
+    this._contexts.set(key, context);
+    return key;
+  }
+
+  activate(key: string): TContext | null {
+    if (!this._catalog.activate(key))
+      return null;
+    return this._contexts.get(key) ?? null;
+  }
+
+  activeContext(): TContext | null {
+    const target = this._catalog.activeTarget();
+    return target ? this._contexts.get(recordingTargetKey(target)) ?? null : null;
+  }
+
+  contexts(): TContext[] {
+    return [...this._contexts.values()];
+  }
+
+  viewModels(locale: RecorderLocale): ActiveTargetViewModel<TContext>[] {
+    return this._catalog.viewModels(locale).flatMap(viewModel => {
+      const context = this._contexts.get(viewModel.key);
+      return context ? [{ context, viewModel }] : [];
+    });
+  }
+}
+
+export class RecordingScriptBuffer<TSource> {
+  private _buffers = new Map<string, { sources: TSource[]; deletedActionKeys: string[] }>();
+
+  save(key: string, buffer: { sources: TSource[]; deletedActionKeys: Iterable<string> }): void {
+    this._buffers.set(key, {
+      sources: [...buffer.sources],
+      deletedActionKeys: [...buffer.deletedActionKeys],
     });
   }
 
   read(key: string): { sources: TSource[]; deletedActionKeys: string[] } | null {
-    const draft = this._drafts.get(key);
-    return draft ? { sources: [...draft.sources], deletedActionKeys: [...draft.deletedActionKeys] } : null;
+    const buffer = this._buffers.get(key);
+    return buffer ? { sources: [...buffer.sources], deletedActionKeys: [...buffer.deletedActionKeys] } : null;
   }
 
   clear(key: string): void {
-    this._drafts.delete(key);
+    this._buffers.delete(key);
   }
 
-  hasDirtyDraft(key: string): boolean {
-    const draft = this._drafts.get(key);
-    return !!draft && (draft.sources.length > 0 || draft.deletedActionKeys.length > 0);
+  hasContent(key: string): boolean {
+    const buffer = this._buffers.get(key);
+    return !!buffer && (buffer.sources.length > 0 || buffer.deletedActionKeys.length > 0);
   }
 }

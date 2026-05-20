@@ -205,6 +205,7 @@ export interface RecorderBackend {
   clear(): Promise<void>;
   closeSelectorAuthoringSession(): Promise<void>;
   getRecordingLaunchContext(): Promise<RecordingLaunchContext | null>;
+  switchRecordingLaunchContext(params: { launchContext: RecordingLaunchContext }): Promise<RecordingLaunchContext | null>;
   saveRecording(params: RecordingSaveRequest): Promise<RecordingSaveResult>;
 }
 

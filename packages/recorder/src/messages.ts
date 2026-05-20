@@ -53,6 +53,7 @@ type RecorderAuthoringMessages = {
   recordScroll: string;
   clear: string;
   save: string;
+  targets: string;
   noLaunchContext: string;
   launchContextTimeout: string;
   noRecordedActionsYet: string;
@@ -142,6 +143,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordScroll: 'Scroll',
       clear: 'Clear',
       save: 'Save',
+      targets: 'Targets',
       noLaunchContext: 'No launch context',
       launchContextTimeout: 'Recorder launch context did not arrive in time. Keep the Client running, close this recorder window, and open recording again.',
       noRecordedActionsYet: 'No recorded actions yet',
@@ -224,6 +226,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordScroll: '滚动',
       clear: '清空',
       save: '保存',
+      targets: '目标',
       noLaunchContext: '没有启动上下文',
       launchContextTimeout: '录制启动上下文获取超时。请保持本地 Client 正在运行，关闭当前录制窗口后重新打开录制。',
       noRecordedActionsYet: '还没有录制任何操作',
@@ -306,6 +309,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordScroll: '捲動',
       clear: '清空',
       save: '儲存',
+      targets: '目標',
       noLaunchContext: '沒有啟動上下文',
       launchContextTimeout: '錄製啟動上下文取得逾時。請保持本機 Client 正在執行，關閉目前錄製視窗後重新開啟錄製。',
       noRecordedActionsYet: '尚未錄製任何操作',
@@ -388,6 +392,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       recordScroll: 'スクロール',
       clear: 'クリア',
       save: '保存',
+      targets: '対象',
       noLaunchContext: '起動コンテキストがありません',
       launchContextTimeout: '録画の起動コンテキストを時間内に取得できませんでした。ローカル Client を起動したまま、この録画ウィンドウを閉じてもう一度開いてください。',
       noRecordedActionsYet: '録画された操作はまだありません',
