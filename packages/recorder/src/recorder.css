@@ -228,9 +228,11 @@
   display: flex;
   align-items: center;
   min-height: 28px;
-  padding: 2px 0;
-  border: 0;
-  background: transparent;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--sa-border);
+  border-radius: 10px;
+  background: var(--sa-surface-bg);
   box-shadow: none;
   color: var(--sa-text);
   font-size: 13px;
@@ -244,7 +246,6 @@
 .recorder-authoring-target-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   padding: 10px;
   border: 1px solid var(--sa-border);
   border-radius: 12px;
@@ -252,44 +253,21 @@
   box-shadow: var(--sa-shadow-sm);
 }
 
-.recorder-authoring-target-panel-header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  color: var(--sa-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.recorder-authoring-target-panel-header span:first-child {
-  font-weight: 700;
-  color: var(--sa-text);
-}
-
-.recorder-authoring-target-panel-header span:last-child {
-  min-width: 0;
-  overflow: hidden;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .recorder-authoring-target-list {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  min-width: 0;
 }
 
 .recorder-authoring-target-item {
   display: grid;
   grid-template-rows: auto auto;
-  gap: 2px;
-  min-width: 172px;
-  max-width: 260px;
-  min-height: 52px;
-  padding: 8px 10px;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 68px;
+  padding: 12px 14px;
   border: 1px solid var(--sa-border);
   border-radius: 10px;
   background: var(--sa-surface-bg);
@@ -314,19 +292,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
 }
 
 .recorder-authoring-target-body {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: var(--sa-muted);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .recorder-authoring-toolbar {

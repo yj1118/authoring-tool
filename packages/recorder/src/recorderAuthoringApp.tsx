@@ -42,7 +42,6 @@ import {
 import {
   ActiveTargetController,
   recordingTargetKey,
-  recordingTargetViewModel,
 } from './recorder/targets/recordingTargets';
 
 const launchContextTimeoutMs = 8000;
@@ -315,15 +314,10 @@ export const RecorderAuthoringApp: React.FC = () => {
       ? status.message
       : i18n.status[status.kind as RecorderStatusKey];
   const failureAdvice = status.kind === 'failed' ? buildFailureAdvice(status.reasonCode, status.message, i18n) : null;
-  const stepContextLabel = formatStepContextLabel(launchContext, locale, i18n.noLaunchContext);
 
   return <div className='recorder'>
     <div className='recorder-authoring-main' aria-busy={isSaving}>
       <div className='recorder-authoring-target-panel'>
-        <div className='recorder-authoring-target-panel-header'>
-          <span>{i18n.targets}</span>
-          <span title={stepContextLabel}>{stepContextLabel}</span>
-        </div>
         <div className='recorder-authoring-target-list' role='listbox' aria-label={i18n.targets}>
           {targetItems.length ? targetItems.map(item => {
             const isActiveTarget = item.viewModel.key === activeTargetKey;
@@ -334,15 +328,15 @@ export const RecorderAuthoringApp: React.FC = () => {
               key={item.viewModel.key}
               onClick={() => switchTarget(item.context)}
               role='option'
-              title={item.viewModel.body ? `${item.viewModel.title}: ${item.viewModel.body}` : item.viewModel.title}
+              title={item.viewModel.body ? `${item.viewModel.title}\n${item.viewModel.body}` : item.viewModel.title}
               type='button'
             >
               <span className='recorder-authoring-target-title'>{item.viewModel.title}</span>
               {item.viewModel.body ? <span className='recorder-authoring-target-body'>{item.viewModel.body}</span> : null}
             </button>;
           }) : (
-            <div className='recorder-authoring-step-context' title={stepContextLabel}>
-              {stepContextLabel}
+            <div className='recorder-authoring-step-context' title={i18n.noLaunchContext}>
+              {i18n.noLaunchContext}
             </div>
           )}
         </div>
@@ -411,13 +405,6 @@ export const RecorderAuthoringApp: React.FC = () => {
     </div> : null}
   </div>;
 };
-
-function formatStepContextLabel(launchContext: RecordingLaunchContext | null, locale: RecorderLocale, fallback: string): string {
-  if (!launchContext)
-    return fallback;
-  const viewModel = recordingTargetViewModel(launchContext.target, locale);
-  return viewModel.body ? `${viewModel.title}: ${viewModel.body}` : viewModel.title;
-}
 
 function buildFailureAdvice(reasonCode: string, message: string, i18n: ReturnType<typeof getRecorderAuthoringMessages>): string {
   const normalizedReason = reasonCode.toLowerCase();
