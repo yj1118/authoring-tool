@@ -53,6 +53,11 @@ function normalizeHeaders(value: unknown): Record<string, string> | undefined {
   return Object.keys(headers).length ? headers : undefined;
 }
 
+export function resolveRecordingLaunchClientBaseUrl(parsed: Record<string, unknown>): string | undefined {
+  return normalizeOptionalString(parsed.clientBaseUrl)
+    ?? normalizeOptionalString(process.env.AUTHORING_TOOL_CLIENT_BASE_URL);
+}
+
 function parseLaunchContextPayload(parsed: unknown): RecordingLaunchContext | null {
   if (!isRecord(parsed))
     return null;
@@ -73,7 +78,7 @@ function parseLaunchContextPayload(parsed: unknown): RecordingLaunchContext | nu
     startUrl,
     source: normalizeOptionalString(parsed.source) ?? 'client.manual',
     moduleKind: normalizeOptionalString(parsed.moduleKind) ?? recordingTargetModuleKind(target),
-    clientBaseUrl: normalizeOptionalString(parsed.clientBaseUrl) ?? normalizeOptionalString(process.env.AUTHORING_TOOL_CLIENT_BASE_URL),
+    clientBaseUrl: resolveRecordingLaunchClientBaseUrl(parsed),
     orchestratorBaseUrl: normalizeOptionalString(parsed.orchestratorBaseUrl),
     orchestratorHeaders: normalizeHeaders(parsed.orchestratorHeaders),
     recordingBridgeBaseUrl: normalizeOptionalString(parsed.recordingBridgeBaseUrl),
@@ -147,6 +152,8 @@ export function updateRecordingLaunchContext(payload: unknown): RecordingLaunchC
 
 export async function saveRecordingThroughClient(request: RecordingSaveRequest): Promise<RecordingSaveResult> {
   const launchContext = getRecordingLaunchContext();
+  if (!launchContext)
+    throw new Error('Recorder launch context is missing.');
   if (!launchContext?.clientBaseUrl)
     throw new Error('Recorder launch context is missing clientBaseUrl.');
   if (!launchContext.orchestratorBaseUrl && (!launchContext.recordingBridgeBaseUrl || !launchContext.recordingBridgeToken))
