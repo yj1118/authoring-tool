@@ -59,6 +59,7 @@ export async function saveRecordingWorkflow(input: {
       startUrl: input.launchContext?.startUrl ?? input.pageUrl,
       finalUrl: input.pageUrl,
       timeoutMs: generated.timeoutMs,
+      recordingApi: generated.recordingApi,
     });
     input.setStatus({ kind: 'committing' });
     if (result.ok !== true)

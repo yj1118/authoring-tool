@@ -4,7 +4,6 @@ import test from 'node:test';
 import type { Source } from '../../recorderTypes';
 import { RecordingAuthoringError, recordingReasonCodes } from '../errors/recordingErrors';
 import { generateModuleHandlerScriptFromSources } from './moduleHandlerScript';
-import { RECORDING_EXPECT_CALL_NAME, RECORDING_EXPECT_RUNTIME_SOURCE } from './runtime/recordingExpectRuntime';
 
 function sourceWithActions(actions: string[]): Source {
   return {
@@ -33,13 +32,13 @@ test('generates a Playwright Page recording script from Playwright actions and a
   assert.doesNotMatch(generated.scriptText, /context\.playwright\.page/u);
   assert.doesNotMatch(generated.scriptText, /\btest\s*\(/u);
   assert.doesNotMatch(generated.scriptText, /\b(?:browser|context)\.newPage\s*\(/u);
-  assert.ok(generated.scriptText.startsWith(RECORDING_EXPECT_RUNTIME_SOURCE));
-  assert.match(generated.scriptText, /createRecordingExpect/u);
-  assert.match(generated.scriptText, new RegExp(`const ${RECORDING_EXPECT_CALL_NAME} = locator => createRecordingExpect\\(locator, false, recordingAssertions\\)`, 'u'));
+  assert.doesNotMatch(generated.scriptText, /createRecordingExpect/u);
+  assert.doesNotMatch(generated.scriptText, /recordingAssertions/u);
+  assert.match(generated.scriptText, /const recording = context\.recording\.v1\.createSession/u);
   assert.doesNotMatch(generated.scriptText, /recordingTimeoutMs/u);
   assert.doesNotMatch(generated.scriptText, /setDefault(?:Navigation)?Timeout/u);
-  assert.match(generated.scriptText, /assertions: recordingAssertions/u);
-  assert.match(generated.scriptText, new RegExp(`await ${RECORDING_EXPECT_CALL_NAME}\\(page\\.getByRole`, 'u'));
+  assert.match(generated.scriptText, /sourceId: "playwright-test"/u);
+  assert.match(generated.scriptText, /await recording\.expect\(page\.getByRole/u);
   assert.doesNotMatch(generated.scriptText, /await expect\s*\(/u);
   assert.match(generated.scriptText, /scrollTo\(position\.x, position\.y\)/u);
   assert.match(generated.scriptText, /toBeDisabled/u);
@@ -48,6 +47,10 @@ test('generates a Playwright Page recording script from Playwright actions and a
   assert.equal(generated.actionCount, 2);
   assert.equal(generated.assertionCount, 3);
   assert.equal(generated.sourceId, 'playwright-test');
+  assert.deepEqual(generated.recordingApi, {
+    name: 'testbot-recording-runtime',
+    version: 1,
+  });
 });
 
 test('counts assertion-only recordings separately from browser operations', () => {
@@ -59,7 +62,7 @@ test('counts assertion-only recordings separately from browser operations', () =
   ]);
 
   assert.match(generated.scriptText, /actionCount: 0/u);
-  assert.match(generated.scriptText, /assertionCount: 2/u);
+  assert.doesNotMatch(generated.scriptText, /assertionCount: 2/u);
   assert.equal(generated.actionCount, 0);
   assert.equal(generated.assertionCount, 2);
 });

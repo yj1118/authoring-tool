@@ -163,6 +163,10 @@ export type RecordingSaveRequest = {
   startUrl?: string;
   finalUrl?: string;
   timeoutMs?: number;
+  recordingApi?: {
+    name: string;
+    version: number;
+  };
 };
 
 export type RecordingSaveResult = {

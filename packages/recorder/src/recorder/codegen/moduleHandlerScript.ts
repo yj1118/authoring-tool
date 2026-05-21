@@ -1,11 +1,6 @@
 import type { Source } from '../../recorderTypes';
 import { createRecordingAuthoringError, recordingReasonCodes } from '../errors/recordingErrors';
 import { validateGeneratedModuleHandlerScript, validateRecordedActionBlock } from './moduleHandlerScriptValidation';
-import {
-  RECORDING_EXPECT_CALL_NAME,
-  RECORDING_EXPECT_FACTORY_NAME,
-  RECORDING_EXPECT_RUNTIME_SOURCE,
-} from './runtime/recordingExpectRuntime';
 
 export type GeneratedModuleHandlerScript = {
   scriptText: string;
@@ -13,9 +8,16 @@ export type GeneratedModuleHandlerScript = {
   assertionCount: number;
   sourceId: string;
   timeoutMs: number;
+  recordingApi: {
+    name: string;
+    version: number;
+  };
 };
 
 export const DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS = 120_000;
+export const RECORDING_RUNTIME_API_NAME = 'testbot-recording-runtime';
+export const RECORDING_RUNTIME_API_VERSION = 1;
+const RECORDING_SESSION_NAME = 'recording';
 
 function chooseRecordedSource(sources: Source[]): Source | null {
   return sources.find(source => source.isRecorded && source.id === 'playwright-test')
@@ -44,7 +46,7 @@ function isAssertionAction(actionText: string): boolean {
 }
 
 function rewriteRecordedActionBlockForRuntime(actionText: string): string {
-  return actionText.replace(/(^|[^\w$.])expect\s*\(/gu, `$1${RECORDING_EXPECT_CALL_NAME}(`);
+  return actionText.replace(/(^|[^\w$.])expect\s*\(/gu, `$1${RECORDING_SESSION_NAME}.expect(`);
 }
 
 export function generateModuleHandlerScriptFromSources(sources: Source[]): GeneratedModuleHandlerScript {
@@ -76,23 +78,16 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
       .map(action => indentBlock(action, 2))
       .join('\n\n');
 
-  const scriptText = `${RECORDING_EXPECT_RUNTIME_SOURCE}
-
-export default async function recording(page, context) {
-  const recordingAssertions = [];
-  const ${RECORDING_EXPECT_CALL_NAME} = locator => ${RECORDING_EXPECT_FACTORY_NAME}(locator, false, recordingAssertions);
+  const scriptText = `export default async function recording(page, context) {
+  const ${RECORDING_SESSION_NAME} = context.recording.v1.createSession({
+    sourceId: ${JSON.stringify(source.id)},
+  });
 
 ${actionBlocks}
 
-  return {
-    status: 'ok',
-    diagnostics: {
-      sourceId: ${JSON.stringify(source.id)},
-      actionCount: ${actionCount},
-      assertionCount: ${assertionCount},
-      assertions: recordingAssertions,
-    },
-  };
+  return ${RECORDING_SESSION_NAME}.ok({
+    actionCount: ${actionCount},
+  });
 }
 `;
 
@@ -104,5 +99,9 @@ ${actionBlocks}
     assertionCount,
     sourceId: source.id,
     timeoutMs: DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS,
+    recordingApi: {
+      name: RECORDING_RUNTIME_API_NAME,
+      version: RECORDING_RUNTIME_API_VERSION,
+    },
   };
 }
