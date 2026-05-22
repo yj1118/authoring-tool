@@ -77,7 +77,7 @@ export const assertValueInstructionDefinition: RecorderInstructionDefinition<Ass
       onReset={props.onReset}
     >
       <InstructionField label={props.labels.expectedValue}>
-        <InstructionTextarea disabled={props.disabled} onChange={setExpectedValue} readOnly={props.config.empty} rows={3} value={props.config.expectedValue} />
+        <InstructionTextarea disabled={props.disabled} onChange={setExpectedValue} readOnly={props.config.empty} value={props.config.expectedValue} />
       </InstructionField>
       <div className='recorder-instruction-checkbox-row'>
         <InstructionCheckbox
