@@ -38,7 +38,10 @@ test('generates a Playwright Page recording script from Playwright actions and a
   assert.doesNotMatch(generated.scriptText, /recordingTimeoutMs/u);
   assert.doesNotMatch(generated.scriptText, /setDefault(?:Navigation)?Timeout/u);
   assert.match(generated.scriptText, /sourceId: "playwright-test"/u);
-  assert.match(generated.scriptText, /await recording\.expect\(page\.getByRole/u);
+  assert.match(generated.scriptText, /await recording\.runOperation\(/u);
+  assert.match(generated.scriptText, /const operation1Target = page\.getByText\('Submit'\)/u);
+  assert.match(generated.scriptText, /target: operation2Target/u);
+  assert.match(generated.scriptText, /await recording\.expect\(operation2Target\)\.toBeVisible/u);
   assert.doesNotMatch(generated.scriptText, /await expect\s*\(/u);
   assert.match(generated.scriptText, /scrollTo\(position\.x, position\.y\)/u);
   assert.match(generated.scriptText, /toBeDisabled/u);
