@@ -70,6 +70,22 @@ test('counts assertion-only recordings separately from browser operations', () =
   assert.equal(generated.assertionCount, 2);
 });
 
+test('generates select option assertions through the evidence-aware recording API', () => {
+  const generated = generateModuleHandlerScriptFromSources([
+    sourceWithActions([
+      "await expect(page.getByRole('combobox').first()).toHaveSelectOptions({\"matchBy\":[\"text\",\"value\"],\"match\":\"contains\",\"texts\":[\"Option A\",\"Option B\"],\"values\":[\"A\",\"B\"]});",
+    ]),
+  ]);
+
+  assert.match(generated.scriptText, /await recording\.assertSelectOptions\(\{/u);
+  assert.match(generated.scriptText, /locator: operation1Target/u);
+  assert.match(generated.scriptText, /expected: \{"matchBy":\["text","value"\],"match":"contains","texts":\["Option A","Option B"\],"values":\["A","B"\]\}/u);
+  assert.match(generated.scriptText, /overlay: true/u);
+  assert.doesNotMatch(generated.scriptText, /recording\.expect\(operation1Target\)\.toHaveSelectOptions/u);
+  assert.equal(generated.actionCount, 0);
+  assert.equal(generated.assertionCount, 1);
+});
+
 test('rejects generated recording scripts that still contain Playwright Test wrappers', () => {
   assert.throws(
       () => generateModuleHandlerScriptFromSources([
