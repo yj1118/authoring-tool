@@ -28,7 +28,7 @@ import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 import type { Language } from '@isomorphic/locatorGenerators';
 
-type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingValue' | 'assertingSnapshot';
+type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingValue' | 'assertingSelectInitial' | 'assertingSelectOptions' | 'assertingSnapshot';
 type InspectToolIntent = 'pickSelector' | 'assertVisible' | 'assertDisabled' | 'assertNotDisabled' | 'scrollIntoView';
 type RecorderOptions = {
   recorderMode?: 'default' | 'api';
@@ -1218,6 +1218,112 @@ class TextAssertionTool implements RecorderTool {
   }
 }
 
+class SelectAssertionTool implements RecorderTool {
+  private _recorder: Recorder;
+  private _hoverHighlight: HighlightModelWithSelector | null = null;
+  private _kind: 'initial' | 'options';
+
+  constructor(recorder: Recorder, kind: 'initial' | 'options') {
+    this._recorder = recorder;
+    this._kind = kind;
+  }
+
+  cursor() {
+    return 'pointer';
+  }
+
+  uninstall() {
+    this._hoverHighlight = null;
+  }
+
+  allowsPositionActionRecording() {
+    return true;
+  }
+
+  onClick(event: MouseEvent) {
+    consumeEvent(event);
+    this._commitAssertion();
+  }
+
+  onMouseDown(event: MouseEvent) {
+    if (this._targetSelect())
+      event.preventDefault();
+  }
+
+  onPointerUp(event: PointerEvent) {
+    const target = this._targetSelect();
+    if (target?.disabled)
+      this._commitAssertion();
+  }
+
+  onMouseMove(event: MouseEvent) {
+    const target = this._recorder.deepEventTarget(event);
+    if (this._hoverHighlight?.elements[0] === target)
+      return;
+    if (target.nodeName !== 'SELECT') {
+      this._hoverHighlight = null;
+    } else {
+      const generated = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+      this._hoverHighlight = { selector: generated.selector, elements: generated.elements, color: HighlightColors.assert };
+    }
+    this._recorder.updateHighlight(this._hoverHighlight, true);
+  }
+
+  onKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Escape')
+      this._recorder.setMode('recording');
+    consumeEvent(event);
+  }
+
+  onScroll(event: Event) {
+    this._recorder.updateHighlight(this._hoverHighlight, false);
+  }
+
+  private _targetSelect(): HTMLSelectElement | null {
+    const target = this._hoverHighlight?.elements[0];
+    if (target?.nodeName !== 'SELECT')
+      return null;
+    return target as HTMLSelectElement;
+  }
+
+  private _generateAction(): actions.AssertSelectInitialAction | actions.AssertSelectOptionsAction | null {
+    const target = this._targetSelect();
+    if (!target)
+      return null;
+    const { selector } = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    if (this._kind === 'initial') {
+      const selectedOption = target.selectedOptions[0] || target.options[target.selectedIndex];
+      return {
+        name: 'assertSelectInitial',
+        selector,
+        signals: [],
+        selectedText: selectedOption ? this._recorder.injectedScript.utils.normalizeWhiteSpace(selectedOption.text) : '',
+        selectedValue: selectedOption?.value ?? '',
+      };
+    }
+    return {
+      name: 'assertSelectOptions',
+      selector,
+      signals: [],
+      options: [...target.options].map(option => ({
+        text: this._recorder.injectedScript.utils.normalizeWhiteSpace(option.text),
+        value: option.value,
+        disabled: option.disabled,
+      })),
+    };
+  }
+
+  private _commitAssertion() {
+    const action = this._generateAction();
+    if (!action)
+      return;
+    void this._recorder.recordAction(action);
+    const mode = action.name === 'assertSelectInitial' ? 'assertingSelectInitial' : 'assertingSelectOptions';
+    this._recorder.setMode(this._recorder.modeAfterAssertion(mode));
+    this._recorder.overlay?.flashToolSucceeded(mode);
+  }
+}
+
 class Overlay {
   private _recorder: Recorder;
   private _listeners: (() => void)[] = [];
@@ -1279,6 +1385,8 @@ class Overlay {
           'assertingChecked': 'recording-inspecting',
           'assertingUnchecked': 'recording-inspecting',
           'assertingValue': 'recording-inspecting',
+          'assertingSelectInitial': 'recording-inspecting',
+          'assertingSelectOptions': 'recording-inspecting',
           'assertingSnapshot': 'recording-inspecting',
         };
         this._recorder.setMode(newMode[this._recorder.state.mode]);
@@ -1311,7 +1419,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'scrollIntoView') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingSelectInitial' | 'assertingSelectOptions' | 'scrollIntoView') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
@@ -1414,6 +1522,8 @@ export class Recorder {
       'assertingChecked': new CheckedStateAssertionTool(this, true),
       'assertingUnchecked': new CheckedStateAssertionTool(this, false),
       'assertingValue': new TextAssertionTool(this, 'value'),
+      'assertingSelectInitial': new SelectAssertionTool(this, 'initial'),
+      'assertingSelectOptions': new SelectAssertionTool(this, 'options'),
       'assertingSnapshot': new TextAssertionTool(this, 'snapshot'),
     };
     this._currentTool = this._tools.none;

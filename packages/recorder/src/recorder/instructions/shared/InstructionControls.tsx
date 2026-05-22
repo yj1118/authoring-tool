@@ -76,6 +76,27 @@ export const InstructionCheckbox: React.FC<{
   </label>;
 };
 
+export const InstructionRadioGroup = <TValue extends string>({ disabled, name, value, options, onChange }: {
+  disabled?: boolean;
+  name: string;
+  value: TValue;
+  options: { value: TValue; label: string }[];
+  onChange: (value: TValue) => void;
+}) => {
+  return <div className='recorder-instruction-radio-group'>
+    {options.map(option => <label className='recorder-instruction-radio' key={option.value}>
+      <input
+        checked={value === option.value}
+        disabled={disabled}
+        name={name}
+        onChange={() => onChange(option.value)}
+        type='radio'
+      />
+      <span>{option.label}</span>
+    </label>)}
+  </div>;
+};
+
 export const InstructionPanelButton: React.FC<{
   children: React.ReactNode;
   disabled?: boolean;

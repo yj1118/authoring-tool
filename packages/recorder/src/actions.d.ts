@@ -32,6 +32,8 @@ export type ActionName =
   'setInputFiles' |
   'assertText' |
   'assertValue' |
+  'assertSelectInitial' |
+  'assertSelectOptions' |
   'assertChecked' |
   'assertDisabled' |
   'assertVisible' |
@@ -126,6 +128,23 @@ export type AssertValueAction = ActionWithSelector & {
   value: string,
 };
 
+export type SelectOptionSnapshot = {
+  text: string,
+  value: string,
+  disabled: boolean,
+};
+
+export type AssertSelectInitialAction = ActionWithSelector & {
+  name: 'assertSelectInitial',
+  selectedText: string,
+  selectedValue: string,
+};
+
+export type AssertSelectOptionsAction = ActionWithSelector & {
+  name: 'assertSelectOptions',
+  options: SelectOptionSnapshot[],
+};
+
 export type AssertCheckedAction = ActionWithSelector & {
   name: 'assertChecked',
   checked: boolean,
@@ -145,8 +164,8 @@ export type AssertSnapshotAction = ActionWithSelector & {
   ariaSnapshot: string,
 };
 
-export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertCheckedAction | AssertDisabledAction | AssertVisibleAction | AssertSnapshotAction;
-export type AssertAction = AssertCheckedAction | AssertDisabledAction | AssertValueAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
+export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertSelectInitialAction | AssertSelectOptionsAction | AssertCheckedAction | AssertDisabledAction | AssertVisibleAction | AssertSnapshotAction;
+export type AssertAction = AssertCheckedAction | AssertDisabledAction | AssertValueAction | AssertSelectInitialAction | AssertSelectOptionsAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
 export type PerformOnRecordAction = ClickAction | HoverAction | CheckAction | UncheckAction | PressAction | SelectAction;
 
 // Signals.

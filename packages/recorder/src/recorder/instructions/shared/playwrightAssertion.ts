@@ -88,6 +88,16 @@ export function parseStringArgument(argumentText: string | undefined): string | 
   return result;
 }
 
+export function parseJsonArgument(argumentText: string | undefined): unknown | null {
+  if (!argumentText)
+    return null;
+  try {
+    return JSON.parse(argumentText);
+  } catch {
+    return null;
+  }
+}
+
 export function createPlaywrightAssertionAction(targetExpression: string, matcher: string, expectedText?: string): string {
   const argument = expectedText === undefined ? '' : quoteString(expectedText);
   return createPlaywrightAssertionActionWithArgument(targetExpression, matcher, argument);

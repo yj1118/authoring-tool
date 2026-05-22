@@ -24,6 +24,8 @@ export type Mode =
   | 'recording'
   | 'none'
   | 'assertingText'
+  | 'assertingSelectInitial'
+  | 'assertingSelectOptions'
   | 'recording-inspecting'
   | 'standby'
   | 'scrollIntoView'

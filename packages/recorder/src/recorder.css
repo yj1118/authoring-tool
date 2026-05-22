@@ -668,6 +668,37 @@
   margin: 0;
 }
 
+.recorder-instruction-radio-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recorder-instruction-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 8px 2px 4px;
+  border-radius: 999px;
+  color: var(--sa-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recorder-instruction-radio input {
+  margin: 0;
+}
+
+.recorder-instruction-two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
 .recorder-instruction-panel-actions {
   display: flex;
   align-items: center;

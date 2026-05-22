@@ -27,6 +27,8 @@ const i18n = {
   assertUnchecked: 'unchecked',
   assertText: 'text',
   assertValue: 'value',
+  assertSelectInitial: 'select initial',
+  assertSelectOptions: 'select options',
   assertAria: 'aria',
   tooltip: {
     assertVisible: 'visible tip',
@@ -36,6 +38,8 @@ const i18n = {
     assertUnchecked: 'unchecked tip',
     assertText: 'text tip',
     assertValue: 'value tip',
+    assertSelectInitial: 'select initial tip',
+    assertSelectOptions: 'select options tip',
     assertAria: 'aria tip',
   },
 };
@@ -51,6 +55,8 @@ test('assertion toolbar exposes separate checked and unchecked modes', () => {
     'assertingUnchecked',
     'assertingText',
     'assertingValue',
+    'assertingSelectInitial',
+    'assertingSelectOptions',
     'assertingSnapshot',
   ]);
   assert.equal(buttons.find(button => button.mode === 'assertingChecked')?.label, 'checked');

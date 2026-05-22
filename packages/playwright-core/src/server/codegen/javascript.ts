@@ -127,6 +127,12 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         const assertion = action.value ? `toHaveValue(${quote(action.value)})` : `toBeEmpty()`;
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).${assertion};`;
       }
+      case 'assertSelectInitial':
+        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toHaveSelectInitial(${JSON.stringify({ matchBy: 'text', match: 'exact', expected: action.selectedText, text: action.selectedText, value: action.selectedValue })});`;
+      case 'assertSelectOptions': {
+        const sampledOptions = sampleSelectOptions(action.options);
+        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toHaveSelectOptions(${JSON.stringify({ matchBy: ['text', 'value'], match: 'contains', texts: sampledOptions.map(option => option.text), values: sampledOptions.map(option => option.value) })});`;
+      }
       case 'assertSnapshot': {
         const commentIfNeeded = this._isTest ? '' : '// ';
         return `${commentIfNeeded}await expect(${subject}.${this._asLocator(action.selector)}).toMatchAriaSnapshot(${quoteMultiline(action.ariaSnapshot, `${commentIfNeeded}  `)});`;
@@ -195,6 +201,22 @@ function formatOptions(value: any, hasArguments: boolean): string {
   if (!keys.length)
     return '';
   return (hasArguments ? ', ' : '') + formatObject(value);
+}
+
+function sampleSelectOptions(options: actions.SelectOptionSnapshot[]): actions.SelectOptionSnapshot[] {
+  if (options.length <= 9)
+    return options;
+  const indexes = new Set<number>();
+  for (let index = 0; index < 3; index++)
+    indexes.add(index);
+  const middleStart = Math.max(3, Math.floor(options.length / 2) - 1);
+  for (let index = middleStart; index < middleStart + 3 && index < options.length - 3; index++)
+    indexes.add(index);
+  for (let index = Math.max(0, options.length - 3); index < options.length; index++)
+    indexes.add(index);
+  return [...indexes]
+      .sort((a, b) => a - b)
+      .map(index => options[index]);
 }
 
 function formatContextOptions(options: BrowserContextOptions, deviceName: string | undefined, isTest: boolean): string {
