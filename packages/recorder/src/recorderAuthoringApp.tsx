@@ -348,7 +348,9 @@ export const RecorderAuthoringApp: React.FC = () => {
     ? 'success'
     : status.kind === 'failed' || hasGeneratedError
       ? 'danger'
-      : 'normal';
+      : hasUnconfirmedInstructions
+        ? 'warning'
+        : 'normal';
   const statusLabel = status.kind === 'saved'
     ? i18n.saved()
     : status.kind === 'failed'
@@ -405,7 +407,10 @@ export const RecorderAuthoringApp: React.FC = () => {
 
       <div className={`recorder-authoring-status recorder-authoring-status-${statusTone}`}>
         <span className='recorder-authoring-status-message'>{statusLabel}</span>
-        <span className='recorder-authoring-status-summary'>{generatedSummaryMessage}</span>
+        <span className={`recorder-authoring-status-summary ${hasUnconfirmedInstructions ? 'recorder-authoring-status-summary-warning' : ''}`}>
+          {hasUnconfirmedInstructions ? <span className='recorder-authoring-status-warning-icon' aria-hidden='true'>!</span> : null}
+          <span>{generatedSummaryMessage}</span>
+        </span>
         {failureAdvice ? <span className='recorder-authoring-status-advice'>{failureAdvice}</span> : null}
       </div>
 

@@ -375,6 +375,13 @@
   color: #b91c1c;
 }
 
+.recorder-authoring-status-warning {
+  border-color: rgba(217, 119, 6, 0.42);
+  background: #fffbeb;
+  color: #92400e;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.12);
+}
+
 :root.dark-mode .recorder-authoring-status-success {
   border-color: rgba(52, 211, 153, 0.34);
   background: rgba(6, 95, 70, 0.2);
@@ -385,6 +392,12 @@
   border-color: rgba(248, 113, 113, 0.34);
   background: rgba(127, 29, 29, 0.24);
   color: #fca5a5;
+}
+
+:root.dark-mode .recorder-authoring-status-warning {
+  border-color: rgba(251, 191, 36, 0.36);
+  background: rgba(120, 53, 15, 0.26);
+  color: #fcd34d;
 }
 
 .recorder-authoring-status span {
@@ -400,6 +413,27 @@
 
 .recorder-authoring-status-summary {
   justify-self: end;
+}
+
+.recorder-authoring-status-summary-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.recorder-authoring-status-warning-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .recorder-authoring-status-advice {
