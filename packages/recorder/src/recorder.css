@@ -31,6 +31,10 @@
   --sa-chip-bg: #f0f5fa;
   --sa-danger: #bf3b30;
   --sa-danger-soft: #fff1ef;
+  --sa-control-bg: #ffffff;
+  --sa-control-border: #c7d6e6;
+  --sa-control-focus: #75b7f2;
+  --sa-control-text: #102033;
   --sa-section-radius: 6px;
   --sa-shadow-lg: 0 18px 40px rgba(16, 32, 51, 0.12);
   --sa-shadow-md: 0 10px 24px rgba(16, 32, 51, 0.08);
@@ -64,6 +68,10 @@
   --sa-chip-bg: #223247;
   --sa-danger: #ff8f84;
   --sa-danger-soft: rgba(255, 143, 132, 0.12);
+  --sa-control-bg: #ffffff;
+  --sa-control-border: #c7d6e6;
+  --sa-control-focus: #75b7f2;
+  --sa-control-text: #102033;
   --sa-shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.34);
   --sa-shadow-md: 0 10px 24px rgba(0, 0, 0, 0.24);
   --sa-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -245,6 +253,7 @@
 }
 
 .recorder-authoring-target-panel {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -262,6 +271,7 @@
 }
 
 .recorder-authoring-target-item {
+  flex: 0 0 auto;
   display: grid;
   grid-template-rows: auto auto;
   gap: 10px;
@@ -309,6 +319,7 @@
 }
 
 .recorder-authoring-toolbar {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -339,6 +350,7 @@
 }
 
 .recorder-authoring-status {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
@@ -397,7 +409,7 @@
 }
 
 .recorder-authoring-source-panel {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--sa-border);
@@ -418,10 +430,12 @@
 }
 
 .recorder-authoring-action-row {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr) 32px;
+  grid-template-rows: minmax(38px, auto);
   gap: 10px;
-  align-items: center;
+  align-items: start;
   min-height: 54px;
   padding: 8px 9px 8px 12px;
   border: 1px solid var(--sa-border);
@@ -436,9 +450,12 @@
 }
 
 .recorder-authoring-action-index {
+  grid-column: 1;
+  grid-row: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin-top: 6px;
   width: 24px;
   height: 24px;
   border-radius: 8px;
@@ -449,6 +466,9 @@
 }
 
 .recorder-authoring-action-row code {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -460,9 +480,12 @@
 }
 
 .recorder-authoring-action-delete {
+  grid-column: 3;
+  grid-row: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
   width: 28px;
   height: 28px;
   border: 1px solid transparent;
@@ -499,6 +522,184 @@
   cursor: default;
   opacity: 0.35;
   transform: none;
+}
+
+.recorder-instruction-panel {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: 2px;
+  padding: 10px;
+  gap: 10px;
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-section-radius);
+  background: var(--sa-surface-bg);
+}
+
+.recorder-instruction-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recorder-instruction-panel-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sa-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recorder-instruction-panel-state {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--sa-border);
+  color: var(--sa-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.recorder-instruction-panel-state.confirmed {
+  border-color: rgba(5, 150, 105, 0.24);
+  background: rgba(5, 150, 105, 0.12);
+  color: #047857;
+}
+
+.recorder-instruction-panel-state.pending {
+  border-color: rgba(11, 105, 199, 0.24);
+  background: var(--sa-accent-soft);
+  color: var(--sa-accent-strong);
+}
+
+.recorder-instruction-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.recorder-instruction-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--sa-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recorder-instruction-input,
+.recorder-instruction-textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--sa-control-border);
+  border-radius: var(--sa-section-radius);
+  appearance: none;
+  background-color: var(--sa-control-bg);
+  color: var(--sa-control-text);
+  color-scheme: light;
+  font: 12px/1.5 var(--vscode-editor-font-family);
+  outline: none;
+  box-shadow: inset 0 1px 1px rgba(16, 32, 51, 0.04);
+}
+
+.recorder-instruction-input {
+  min-height: 32px;
+  padding: 6px 9px;
+}
+
+.recorder-instruction-textarea {
+  resize: vertical;
+  min-height: 34px;
+  padding: 8px 9px;
+}
+
+.recorder-instruction-input:focus,
+.recorder-instruction-textarea:focus {
+  border-color: var(--sa-control-focus);
+  box-shadow: 0 0 0 2px rgba(11, 105, 199, 0.12), inset 0 1px 1px rgba(16, 32, 51, 0.04);
+}
+
+.recorder-instruction-input:disabled,
+.recorder-instruction-textarea:disabled {
+  opacity: 1;
+  background-color: var(--sa-control-bg);
+  border-color: var(--sa-control-border);
+  color: var(--sa-muted);
+  -webkit-text-fill-color: var(--sa-muted);
+}
+
+.recorder-instruction-input:read-only,
+.recorder-instruction-textarea:read-only {
+  background-color: var(--sa-control-bg);
+  border-color: var(--sa-control-border);
+  color: var(--sa-muted);
+  -webkit-text-fill-color: var(--sa-muted);
+}
+
+.recorder-instruction-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 24px;
+  color: var(--sa-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recorder-instruction-checkbox-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  min-width: 0;
+}
+
+.recorder-instruction-checkbox input {
+  margin: 0;
+}
+
+.recorder-instruction-panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.recorder-instruction-panel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 54px;
+  padding: 5px 10px;
+  border: 1px solid var(--sa-border);
+  border-radius: 999px;
+  background: var(--sa-panel-bg);
+  color: var(--sa-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recorder-instruction-panel-button.primary {
+  border-color: rgba(11, 105, 199, 0.22);
+  background: var(--sa-accent);
+  color: #ffffff;
+}
+
+.recorder-instruction-panel-button:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .recorder-saving-overlay {

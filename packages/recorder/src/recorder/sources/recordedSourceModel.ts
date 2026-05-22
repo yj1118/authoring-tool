@@ -18,7 +18,9 @@ import type { Source } from '../../recorderTypes';
 
 export type ActionPreviewEntry = {
   key: string;
+  instructionId: string;
   text: string;
+  originalText: string;
 };
 
 function chooseRecordedSource(sources: Source[]): Source | undefined {
@@ -41,18 +43,27 @@ function actionKey(source: Source, action: string, index: number): string {
   return `${source.id}:${index}:${hashActionText(action)}`;
 }
 
-export function applyDeletedActionKeys(sources: Source[], deletedActionKeys: Set<string>): Source[] {
-  if (!deletedActionKeys.size)
+export function applyRecordedActionEdits(sources: Source[], deletedActionKeys: Set<string>, actionTextOverrides: ReadonlyMap<string, string>): Source[] {
+  if (!deletedActionKeys.size && !actionTextOverrides.size)
     return sources;
   return sources.map(source => {
     if (!source.isRecorded || !source.actions?.length)
       return source;
-    const actions = source.actions.filter((action, index) => !deletedActionKeys.has(actionKey(source, action, index)));
+    const actions = source.actions.flatMap((action, index) => {
+      const key = actionKey(source, action, index);
+      if (deletedActionKeys.has(key))
+        return [];
+      return [actionTextOverrides.get(key) ?? action];
+    });
     return { ...source, actions };
   });
 }
 
-export function choosePreviewActions(sources: Source[], deletedActionKeys: Set<string>): ActionPreviewEntry[] {
+export function applyDeletedActionKeys(sources: Source[], deletedActionKeys: Set<string>): Source[] {
+  return applyRecordedActionEdits(sources, deletedActionKeys, new Map());
+}
+
+export function choosePreviewActions(sources: Source[], deletedActionKeys: Set<string>, actionTextOverrides: ReadonlyMap<string, string> = new Map()): ActionPreviewEntry[] {
   const source = sources.find(candidate => candidate.isRecorded && candidate.id === 'playwright-test')
     ?? chooseRecordedSource(sources);
   if (!source)
@@ -61,7 +72,8 @@ export function choosePreviewActions(sources: Source[], deletedActionKeys: Set<s
     const key = actionKey(source, action, index);
     if (deletedActionKeys.has(key))
       return [];
-    const text = normalizePreviewAction(action);
-    return text ? [{ key, text }] : [];
+    const actionText = actionTextOverrides.get(key) ?? action;
+    const text = normalizePreviewAction(actionText);
+    return text ? [{ key, instructionId: key, text, originalText: action }] : [];
   });
 }

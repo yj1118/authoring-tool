@@ -14,15 +14,23 @@
   limitations under the License.
 */
 
-import type { CallLog, Mode, RecordingLaunchContext, RecorderBackend, RecorderFrontend, RecorderLocale, Source } from './recorderTypes';
+import type { CallLog, Mode, RecordingLaunchContext, RecorderFrontend, RecorderLocale, Source } from './recorderTypes';
 import * as React from 'react';
 import './recorder.css';
 import { createRecorderBackend } from './recorderBackend';
 import { getRecorderAuthoringMessages, normalizeRecorderLocale } from './messages';
 import { generateModuleHandlerScriptFromSources } from './recorder/codegen/moduleHandlerScript';
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from './recorder/errors/recordingErrors';
+import { recorderInstructionLabels } from './recorder/instructions/labels';
+import {
+  buildRecorderInstructionActionTextOverrides,
+  hasUnconfirmedRecorderInstructions,
+  reconcileRecorderInstructionDrafts,
+  RecorderInstructionPanel,
+} from './recorder/instructions/recorderInstructionRegistry';
+import type { RecorderInstructionDraft, RecorderInstructionDraftMap } from './recorder/instructions/types';
 import { saveRecordingWorkflow } from './recorder/save/saveRecordingWorkflow';
-import { applyDeletedActionKeys, choosePreviewActions } from './recorder/sources/recordedSourceModel';
+import { applyRecordedActionEdits, choosePreviewActions } from './recorder/sources/recordedSourceModel';
 import {
   failedStatus,
   isRecorderCaptureMode,
@@ -50,10 +58,12 @@ export const RecorderAuthoringApp: React.FC = () => {
   const backend = React.useMemo(createRecorderBackend, []);
   const [locale, setLocale] = React.useState<RecorderLocale>(() => normalizeRecorderLocale(window.navigator.language));
   const i18n = React.useMemo(() => getRecorderAuthoringMessages(locale), [locale]);
+  const instructionLabels = React.useMemo(() => recorderInstructionLabels(locale), [locale]);
   const launchContextTimeoutMessageRef = React.useRef(i18n.launchContextTimeout);
   const [mode, setMode] = React.useState<Mode>('none');
   const [sources, setSources] = React.useState<Source[]>([]);
   const [deletedActionKeys, setDeletedActionKeys] = React.useState<Set<string>>(() => new Set());
+  const [instructionDrafts, setInstructionDrafts] = React.useState<RecorderInstructionDraftMap>(() => new Map());
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
   const [targetContexts, setTargetContexts] = React.useState<RecordingLaunchContext[]>([]);
@@ -78,6 +88,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     setPositionActionRecordingEnabledState(false);
     setSources([]);
     setDeletedActionKeys(new Set());
+    setInstructionDrafts(new Map());
     setStatus({ kind: 'ready' });
   }, [upsertTargetContext]);
 
@@ -109,9 +120,8 @@ export const RecorderAuthoringApp: React.FC = () => {
       sourceRevealRequested: () => {},
       elementPicked: () => {},
       selectorAuthoringDiagnosticChanged: ({ diagnostic }) => {
-        if (diagnostic?.severity === 'error') {
+        if (diagnostic?.severity === 'error')
           setStatus(failedStatus(recordingReasonCodes.pageLoadFailed, diagnostic.message));
-        }
       },
       recordingLaunchContextChanged: ({ launchContext }) => {
         activateLaunchContext(launchContext);
@@ -147,7 +157,19 @@ export const RecorderAuthoringApp: React.FC = () => {
     };
   }, [backend, upsertTargetContext]);
 
-  const editableSources = React.useMemo(() => applyDeletedActionKeys(sources, deletedActionKeys), [deletedActionKeys, sources]);
+  const basePreviewActions = React.useMemo(() => choosePreviewActions(sources, deletedActionKeys), [deletedActionKeys, sources]);
+
+  React.useEffect(() => {
+    setInstructionDrafts(current => reconcileRecorderInstructionDrafts(basePreviewActions, current));
+  }, [basePreviewActions]);
+
+  const instructionActionTextOverrides = React.useMemo(() => {
+    return buildRecorderInstructionActionTextOverrides(basePreviewActions, instructionDrafts);
+  }, [basePreviewActions, instructionDrafts]);
+
+  const editableSources = React.useMemo(() => {
+    return applyRecordedActionEdits(sources, deletedActionKeys, instructionActionTextOverrides);
+  }, [deletedActionKeys, instructionActionTextOverrides, sources]);
 
   const generatedSummary = React.useMemo(() => {
     try {
@@ -167,10 +189,17 @@ export const RecorderAuthoringApp: React.FC = () => {
   }, [editableSources]);
 
   const isSaving = isSavingStatus(status);
-  const canSave = generatedSummary.ok && !isSaving;
-  const previewActions = React.useMemo(() => choosePreviewActions(sources, deletedActionKeys), [deletedActionKeys, sources]);
+  const hasUnconfirmedInstructions = React.useMemo(() => {
+    return hasUnconfirmedRecorderInstructions(basePreviewActions, instructionDrafts);
+  }, [basePreviewActions, instructionDrafts]);
+  const canSave = generatedSummary.ok && !isSaving && !hasUnconfirmedInstructions;
+  const previewActions = React.useMemo(() => {
+    return choosePreviewActions(sources, deletedActionKeys, instructionActionTextOverrides);
+  }, [deletedActionKeys, instructionActionTextOverrides, sources]);
   const generatedSummaryMessage = generatedSummary.ok
-    ? i18n.countSummary(generatedSummary.actionCount, generatedSummary.assertionCount)
+    ? hasUnconfirmedInstructions
+      ? instructionLabels.confirmBeforeSave
+      : i18n.countSummary(generatedSummary.actionCount, generatedSummary.assertionCount)
     : previewActions.length
       ? generatedSummary.message
       : i18n.recordAtLeastOneActionOrAssertion;
@@ -262,6 +291,7 @@ export const RecorderAuthoringApp: React.FC = () => {
         await backend.clear();
         setSources([]);
         setDeletedActionKeys(new Set());
+        setInstructionDrafts(new Map());
         setStatus({ kind: 'idle' });
       } catch (error) {
         const normalized = normalizeRecordingAuthoringError(error, recordingReasonCodes.codegenFailed);
@@ -280,12 +310,23 @@ export const RecorderAuthoringApp: React.FC = () => {
     });
   }, [isSaving]);
 
+  const updateInstructionDraft = React.useCallback((instructionId: string, draft: RecorderInstructionDraft) => {
+    if (isSaving)
+      return;
+    setInstructionDrafts(current => {
+      const next = new Map(current);
+      next.set(instructionId, draft);
+      return next;
+    });
+  }, [isSaving]);
+
   const save = React.useCallback(async () => {
-    if (saveInFlightRef.current)
+    if (saveInFlightRef.current || !generatedSummary.ok || hasUnconfirmedInstructions)
       return;
     saveInFlightRef.current = true;
     try {
       await saveRecordingWorkflow({
+        actionTextOverrides: instructionActionTextOverrides,
         backend,
         deletedActionKeys,
         disablePositionActionRecordingIfNeeded,
@@ -300,7 +341,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     } finally {
       saveInFlightRef.current = false;
     }
-  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, i18n.saveFailed, launchContext, mode, pageUrl]);
+  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, generatedSummary.ok, hasUnconfirmedInstructions, i18n.saveFailed, instructionActionTextOverrides, launchContext, mode, pageUrl]);
 
   const hasGeneratedError = !generatedSummary.ok && previewActions.length > 0;
   const statusTone = status.kind === 'saved'
@@ -355,7 +396,7 @@ export const RecorderAuthoringApp: React.FC = () => {
             {i18n.recordScroll}
           </button>
           <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
-          <button className='selector-authoring-primary-button recorder-authoring-save-button' disabled={!canSave} onClick={() => void save()} title={generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
+          <button className='selector-authoring-primary-button recorder-authoring-save-button' disabled={!canSave} onClick={() => void save()} title={hasUnconfirmedInstructions ? instructionLabels.confirmBeforeSave : generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
         </div>
         <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertChecked} / ${i18n.assertUnchecked} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertAria}`}>
           {assertionModeButtons.map(renderModeButton)}
@@ -385,6 +426,13 @@ export const RecorderAuthoringApp: React.FC = () => {
                 >
                   ×
                 </button>
+                <RecorderInstructionPanel
+                  disabled={isSaving}
+                  draft={instructionDrafts.get(action.instructionId)}
+                  entry={action}
+                  labels={instructionLabels}
+                  onChange={updateInstructionDraft}
+                />
               </div>
             ))}
           </div>

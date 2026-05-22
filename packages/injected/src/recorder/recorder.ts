@@ -1084,8 +1084,6 @@ class JsonRecordActionTool implements RecorderTool {
 class TextAssertionTool implements RecorderTool {
   private _recorder: Recorder;
   private _hoverHighlight: HighlightModelWithSelector | null = null;
-  private _action: actions.AssertAction | null = null;
-  private _dialog: Dialog;
   private _textCache: Map<Element | ShadowRoot, ElementText>;
   private _kind: 'text' | 'value' | 'snapshot';
 
@@ -1093,7 +1091,6 @@ class TextAssertionTool implements RecorderTool {
     this._recorder = recorder;
     this._textCache = new Map();
     this._kind = kind;
-    this._dialog = new Dialog(recorder);
   }
 
   cursor() {
@@ -1101,22 +1098,16 @@ class TextAssertionTool implements RecorderTool {
   }
 
   uninstall() {
-    this._dialog.close();
     this._hoverHighlight = null;
   }
 
   allowsPositionActionRecording() {
-    return !this._dialog.isShowing();
+    return true;
   }
 
   onClick(event: MouseEvent) {
     consumeEvent(event);
-    if (this._kind === 'value') {
-      this._commitAssertValue();
-    } else {
-      if (!this._dialog.isShowing())
-        this._showDialog();
-    }
+    this._commitAssertion();
   }
 
   onMouseDown(event: MouseEvent) {
@@ -1130,13 +1121,11 @@ class TextAssertionTool implements RecorderTool {
     if (this._kind === 'value' && target && (target.nodeName === 'INPUT' || target.nodeName === 'SELECT') && (target as HTMLInputElement).disabled) {
       // Click on a disabled input (or select) does not produce a "click" event, but we still want
       // to assert the value.
-      this._commitAssertValue();
+      this._commitAssertion();
     }
   }
 
   onMouseMove(event: MouseEvent) {
-    if (this._dialog.isShowing())
-      return;
     const target = this._recorder.deepEventTarget(event);
     if (this._hoverHighlight?.elements[0] === target)
       return;
@@ -1208,75 +1197,24 @@ class TextAssertionTool implements RecorderTool {
     }
   }
 
-  private _renderValue(action: actions.Action) {
-    if (action?.name === 'assertText')
-      return this._recorder.injectedScript.utils.normalizeWhiteSpace(action.text);
-    if (action?.name === 'assertValue')
-      return action.value;
-    if (action?.name === 'assertSnapshot')
-      return action.ariaSnapshot;
-    return '';
-  }
-
-  private _commit() {
-    if (!this._action || !this._dialog.isShowing())
-      return;
-    this._dialog.close();
-    void this._recorder.recordAction(this._action);
-    this._recorder.setMode(this._recorder.modeAfterAssertion('assertingText'));
-  }
-
-  private _showDialog() {
-    if (!this._hoverHighlight?.elements[0])
-      return;
-    this._action = this._generateAction();
-    if (this._action?.name === 'assertText') {
-      this._showTextDialog(this._action);
-    } else if (this._action?.name === 'assertSnapshot') {
-      void this._recorder.recordAction(this._action);
-      this._recorder.setMode(this._recorder.modeAfterAssertion('assertingSnapshot'));
-      this._recorder.overlay?.flashToolSucceeded('assertingSnapshot');
-    }
-  }
-
-  private _showTextDialog(action: actions.AssertTextAction) {
-    const textElement = this._recorder.document.createElement('textarea');
-    textElement.setAttribute('spellcheck', 'false');
-    textElement.value = this._renderValue(action);
-    textElement.classList.add('text-editor');
-
-    const updateAndValidate = () => {
-      const newValue = this._recorder.injectedScript.utils.normalizeWhiteSpace(textElement.value);
-      const target = this._hoverHighlight?.elements[0];
-      if (!target)
-        return;
-      action.text = newValue;
-      const targetText = this._recorder.injectedScript.utils.elementText(this._textCache, target).normalized;
-      const matches = newValue && targetText.includes(newValue);
-      textElement.classList.toggle('does-not-match', !matches);
-    };
-    textElement.addEventListener('input', updateAndValidate);
-
-    const label = 'Assert that element contains text';
-    const dialogElement = this._dialog.show({
-      label,
-      body: textElement,
-      onCommit: () => this._commit(),
-    });
-    const position = this._recorder.highlight.tooltipPosition(this._recorder.highlight.firstBox()!, dialogElement);
-    this._dialog.moveTo(position.anchorTop, position.anchorLeft);
-    textElement.focus();
-  }
-
-  private _commitAssertValue() {
-    if (this._kind !== 'value')
-      return;
+  private _commitAssertion() {
     const action = this._generateAction();
     if (!action)
       return;
     void this._recorder.recordAction(action);
-    this._recorder.setMode(this._recorder.modeAfterAssertion('assertingValue'));
-    this._recorder.overlay?.flashToolSucceeded('assertingValue');
+    const mode = this._modeForAction(action);
+    this._recorder.setMode(this._recorder.modeAfterAssertion(mode));
+    this._recorder.overlay?.flashToolSucceeded(mode);
+  }
+
+  private _modeForAction(action: actions.AssertAction): AssertionMode {
+    if (action.name === 'assertText')
+      return 'assertingText';
+    if (action.name === 'assertValue')
+      return 'assertingValue';
+    if (action.name === 'assertSnapshot')
+      return 'assertingSnapshot';
+    throw new Error(`Unexpected text assertion tool action: ${action.name}`);
   }
 }
 
@@ -1373,7 +1311,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingSnapshot' | 'assertingValue' | 'scrollIntoView') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'scrollIntoView') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }

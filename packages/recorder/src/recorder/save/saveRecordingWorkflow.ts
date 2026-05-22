@@ -17,7 +17,7 @@
 import { generateModuleHandlerScriptFromSources } from '../codegen/moduleHandlerScript';
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from '../errors/recordingErrors';
 import { failedStatus, isRecorderCaptureMode } from '../state/recorderStatus';
-import { applyDeletedActionKeys } from '../sources/recordedSourceModel';
+import { applyRecordedActionEdits } from '../sources/recordedSourceModel';
 
 import type { Mode, RecordingLaunchContext, RecorderBackend, Source } from '../../recorderTypes';
 import type { RecorderStatus } from '../state/recorderStatus';
@@ -26,6 +26,7 @@ type SetState<T> = (value: T | ((current: T) => T)) => void;
 
 export async function saveRecordingWorkflow(input: {
   backend: RecorderBackend;
+  actionTextOverrides: ReadonlyMap<string, string>;
   deletedActionKeys: Set<string>;
   disablePositionActionRecordingIfNeeded: () => Promise<void>;
   launchContext: RecordingLaunchContext | null;
@@ -49,7 +50,7 @@ export async function saveRecordingWorkflow(input: {
     await input.disablePositionActionRecordingIfNeeded();
     const latestSources = await input.backend.prepareRecordingSources();
     input.setSources(latestSources);
-    const generated = generateModuleHandlerScriptFromSources(applyDeletedActionKeys(latestSources, input.deletedActionKeys));
+    const generated = generateModuleHandlerScriptFromSources(applyRecordedActionEdits(latestSources, input.deletedActionKeys, input.actionTextOverrides));
     input.setStatus({ kind: 'uploading' });
     const result = await input.backend.saveRecording({
       scriptText: generated.scriptText,

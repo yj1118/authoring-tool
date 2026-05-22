@@ -1,3 +1,6 @@
 [*]
 @web/**
 @isomorphic/**
+./recorder/**
+node_modules/node:assert/strict
+node_modules/node:test
