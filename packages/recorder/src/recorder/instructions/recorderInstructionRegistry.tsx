@@ -17,7 +17,6 @@
 import type { ActionPreviewEntry } from '../sources/recordedSourceModel';
 import type { RecorderInstructionDraft, RecorderInstructionDraftMap, RecorderInstructionLabels, ResolvedRecorderInstruction } from './types';
 import * as React from 'react';
-import { assertSelectInitialInstructionDefinition } from './assertSelectInitial/assertSelectInitialInstruction';
 import { assertSelectOptionsInstructionDefinition } from './assertSelectOptions/assertSelectOptionsInstruction';
 import { assertTextInstructionDefinition } from './assertText/assertTextInstruction';
 import { assertValueInstructionDefinition } from './assertValue/assertValueInstruction';
@@ -25,7 +24,6 @@ import { assertValueInstructionDefinition } from './assertValue/assertValueInstr
 const recorderInstructionDefinitions = [
   assertTextInstructionDefinition,
   assertValueInstructionDefinition,
-  assertSelectInitialInstructionDefinition,
   assertSelectOptionsInstructionDefinition,
 ];
 

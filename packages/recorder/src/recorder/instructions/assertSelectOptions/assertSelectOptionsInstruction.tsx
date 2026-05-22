@@ -30,6 +30,10 @@ export type AssertSelectOptionsInstructionConfig = {
   match: SelectOptionsMatch;
   optionTexts: string;
   optionValues: string;
+  sampleOptionTexts: string;
+  sampleOptionValues: string;
+  allOptionTexts: string;
+  allOptionValues: string;
 };
 
 type SelectOptionsAssertionArgument = {
@@ -37,6 +41,8 @@ type SelectOptionsAssertionArgument = {
   match?: unknown;
   texts?: unknown;
   values?: unknown;
+  allTexts?: unknown;
+  allValues?: unknown;
 };
 
 export const assertSelectOptionsInstructionDefinition: RecorderInstructionDefinition<AssertSelectOptionsInstructionConfig> = {
@@ -49,13 +55,22 @@ export const assertSelectOptionsInstructionDefinition: RecorderInstructionDefini
     if (!parsed || typeof parsed !== 'object')
       return null;
     const matchBy = parseMatchBy(parsed.matchBy);
+    const sampleOptionTexts = arrayToLines(parsed.texts);
+    const sampleOptionValues = arrayToLines(parsed.values);
+    const allOptionTexts = arrayToLines(parsed.allTexts) || sampleOptionTexts;
+    const allOptionValues = arrayToLines(parsed.allValues) || sampleOptionValues;
+    const match = parsed.match === 'exact' ? 'exact' : 'contains';
     return {
       targetExpression: call.targetExpression,
       matchByText: matchBy.includes('text'),
       matchByValue: matchBy.includes('value'),
-      match: parsed.match === 'exact' ? 'exact' : 'contains',
-      optionTexts: arrayToLines(parsed.texts),
-      optionValues: arrayToLines(parsed.values),
+      match,
+      optionTexts: match === 'exact' ? allOptionTexts : sampleOptionTexts,
+      optionValues: match === 'exact' ? allOptionValues : sampleOptionValues,
+      sampleOptionTexts,
+      sampleOptionValues,
+      allOptionTexts,
+      allOptionValues,
     };
   },
   createActionText: (_originalActionText, config) => {
@@ -77,9 +92,25 @@ export const assertSelectOptionsInstructionDefinition: RecorderInstructionDefini
         return;
       props.onChange({ ...props.config, matchByValue });
     };
-    const setMatch = (match: SelectOptionsMatch) => props.onChange({ ...props.config, match });
-    const setOptionTexts = (optionTexts: string) => props.onChange({ ...props.config, optionTexts });
-    const setOptionValues = (optionValues: string) => props.onChange({ ...props.config, optionValues });
+    const setMatch = (match: SelectOptionsMatch) => {
+      if (match === props.config.match)
+        return;
+      const currentConfig = syncVisibleOptionsToSnapshot(props.config);
+      props.onChange({
+        ...currentConfig,
+        match,
+        optionTexts: match === 'exact' ? currentConfig.allOptionTexts : currentConfig.sampleOptionTexts,
+        optionValues: match === 'exact' ? currentConfig.allOptionValues : currentConfig.sampleOptionValues,
+      });
+    };
+    const setOptionTexts = (optionTexts: string) => props.onChange(syncVisibleOptionsToSnapshot({
+      ...props.config,
+      optionTexts,
+    }));
+    const setOptionValues = (optionValues: string) => props.onChange(syncVisibleOptionsToSnapshot({
+      ...props.config,
+      optionValues,
+    }));
     return <InstructionPanelFrame
       title={props.labels.selectOptionsAssertionTitle}
       labels={props.labels}
@@ -143,6 +174,21 @@ function buildMatchBy(config: AssertSelectOptionsInstructionConfig): SelectMatch
   if (config.matchByValue)
     matchBy.push('value');
   return matchBy.length ? matchBy : ['text'];
+}
+
+function syncVisibleOptionsToSnapshot(config: AssertSelectOptionsInstructionConfig): AssertSelectOptionsInstructionConfig {
+  if (config.match === 'exact') {
+    return {
+      ...config,
+      allOptionTexts: config.optionTexts,
+      allOptionValues: config.optionValues,
+    };
+  }
+  return {
+    ...config,
+    sampleOptionTexts: config.optionTexts,
+    sampleOptionValues: config.optionValues,
+  };
 }
 
 function arrayToLines(value: unknown): string {

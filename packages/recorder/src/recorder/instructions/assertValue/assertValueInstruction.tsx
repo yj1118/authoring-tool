@@ -23,7 +23,6 @@ import { InstructionPanelFrame } from '../shared/InstructionPanelFrame';
 export type AssertValueInstructionConfig = {
   targetExpression: string;
   expectedValue: string;
-  empty: boolean;
   match: 'exact' | 'contains';
 };
 
@@ -39,7 +38,6 @@ export const assertValueInstructionDefinition: RecorderInstructionDefinition<Ass
       return {
         targetExpression: call.targetExpression,
         expectedValue: '',
-        empty: true,
         match: 'exact',
       };
     }
@@ -51,21 +49,19 @@ export const assertValueInstructionDefinition: RecorderInstructionDefinition<Ass
     return {
       targetExpression: call.targetExpression,
       expectedValue,
-      empty: false,
       match: 'exact',
     };
   },
   createActionText: (_originalActionText, config) => {
-    if (config.empty)
+    if (!config.expectedValue)
       return createPlaywrightAssertionAction(config.targetExpression, 'toBeEmpty');
     if (config.match === 'contains')
       return createPlaywrightAssertionActionWithArgument(config.targetExpression, 'toHaveValue', quoteRegexLiteral(config.expectedValue));
     return createPlaywrightAssertionAction(config.targetExpression, 'toHaveValue', config.expectedValue);
   },
   renderPanel: props => {
-    const setExpectedValue = (expectedValue: string) => props.onChange({ ...props.config, expectedValue, empty: false });
-    const setEmpty = (empty: boolean) => props.onChange({ ...props.config, empty });
-    const setContains = (contains: boolean) => props.onChange({ ...props.config, match: contains ? 'contains' : 'exact', empty: false });
+    const setExpectedValue = (expectedValue: string) => props.onChange({ ...props.config, expectedValue });
+    const setContains = (contains: boolean) => props.onChange({ ...props.config, match: contains ? 'contains' : 'exact' });
     return <InstructionPanelFrame
       title={props.labels.valueAssertionTitle}
       labels={props.labels}
@@ -77,20 +73,14 @@ export const assertValueInstructionDefinition: RecorderInstructionDefinition<Ass
       onReset={props.onReset}
     >
       <InstructionField label={props.labels.expectedValue}>
-        <InstructionTextarea disabled={props.disabled} onChange={setExpectedValue} readOnly={props.config.empty} value={props.config.expectedValue} />
+        <InstructionTextarea disabled={props.disabled} onChange={setExpectedValue} value={props.config.expectedValue} />
       </InstructionField>
       <div className='recorder-instruction-checkbox-row'>
         <InstructionCheckbox
-          checked={props.config.match === 'contains' && !props.config.empty}
-          disabled={props.disabled || props.config.empty}
+          checked={props.config.match === 'contains' && !!props.config.expectedValue}
+          disabled={props.disabled || !props.config.expectedValue}
           label={props.labels.containsValue}
           onChange={setContains}
-        />
-        <InstructionCheckbox
-          checked={props.config.empty}
-          disabled={props.disabled}
-          label={props.labels.assertEmptyValue}
-          onChange={setEmpty}
         />
       </div>
     </InstructionPanelFrame>;

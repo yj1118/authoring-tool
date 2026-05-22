@@ -398,7 +398,7 @@ export const RecorderAuthoringApp: React.FC = () => {
           <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
           <button className='selector-authoring-primary-button recorder-authoring-save-button' disabled={!canSave} onClick={() => void save()} title={hasUnconfirmedInstructions ? instructionLabels.confirmBeforeSave : generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
         </div>
-        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertChecked} / ${i18n.assertUnchecked} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertSelectInitial} / ${i18n.assertSelectOptions} / ${i18n.assertAria}`}>
+        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertChecked} / ${i18n.assertUnchecked} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertSelectOptions} / ${i18n.assertAria}`}>
           {assertionModeButtons.map(renderModeButton)}
         </div>
       </div>

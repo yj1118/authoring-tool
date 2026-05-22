@@ -44,7 +44,6 @@ export function buildAssertionModeButtons(i18n: {
   assertUnchecked: string;
   assertText: string;
   assertValue: string;
-  assertSelectInitial: string;
   assertSelectOptions: string;
   assertAria: string;
   tooltip: {
@@ -55,7 +54,6 @@ export function buildAssertionModeButtons(i18n: {
     assertUnchecked: string;
     assertText: string;
     assertValue: string;
-    assertSelectInitial: string;
     assertSelectOptions: string;
     assertAria: string;
   };
@@ -68,7 +66,6 @@ export function buildAssertionModeButtons(i18n: {
     { mode: 'assertingUnchecked', label: i18n.assertUnchecked, tooltip: i18n.tooltip.assertUnchecked },
     { mode: 'assertingText', label: i18n.assertText, tooltip: i18n.tooltip.assertText },
     { mode: 'assertingValue', label: i18n.assertValue, tooltip: i18n.tooltip.assertValue },
-    { mode: 'assertingSelectInitial', label: i18n.assertSelectInitial, tooltip: i18n.tooltip.assertSelectInitial },
     { mode: 'assertingSelectOptions', label: i18n.assertSelectOptions, tooltip: i18n.tooltip.assertSelectOptions },
     { mode: 'assertingSnapshot', label: i18n.assertAria, tooltip: i18n.tooltip.assertAria },
   ];

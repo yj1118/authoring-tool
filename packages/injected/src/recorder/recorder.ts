@@ -28,7 +28,7 @@ import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 import type { Language } from '@isomorphic/locatorGenerators';
 
-type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingValue' | 'assertingSelectInitial' | 'assertingSelectOptions' | 'assertingSnapshot';
+type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingValue' | 'assertingSelectOptions' | 'assertingSnapshot';
 type InspectToolIntent = 'pickSelector' | 'assertVisible' | 'assertDisabled' | 'assertNotDisabled' | 'scrollIntoView';
 type RecorderOptions = {
   recorderMode?: 'default' | 'api';
@@ -1221,11 +1221,9 @@ class TextAssertionTool implements RecorderTool {
 class SelectAssertionTool implements RecorderTool {
   private _recorder: Recorder;
   private _hoverHighlight: HighlightModelWithSelector | null = null;
-  private _kind: 'initial' | 'options';
 
-  constructor(recorder: Recorder, kind: 'initial' | 'options') {
+  constructor(recorder: Recorder) {
     this._recorder = recorder;
-    this._kind = kind;
   }
 
   cursor() {
@@ -1286,30 +1284,22 @@ class SelectAssertionTool implements RecorderTool {
     return target as HTMLSelectElement;
   }
 
-  private _generateAction(): actions.AssertSelectInitialAction | actions.AssertSelectOptionsAction | null {
+  private _generateAction(): actions.AssertSelectOptionsAction | null {
     const target = this._targetSelect();
     if (!target)
       return null;
     const { selector } = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
-    if (this._kind === 'initial') {
-      const selectedOption = target.selectedOptions[0] || target.options[target.selectedIndex];
-      return {
-        name: 'assertSelectInitial',
-        selector,
-        signals: [],
-        selectedText: selectedOption ? this._recorder.injectedScript.utils.normalizeWhiteSpace(selectedOption.text) : '',
-        selectedValue: selectedOption?.value ?? '',
-      };
-    }
     return {
       name: 'assertSelectOptions',
       selector,
       signals: [],
-      options: [...target.options].map(option => ({
-        text: this._recorder.injectedScript.utils.normalizeWhiteSpace(option.text),
-        value: option.value,
-        disabled: option.disabled,
-      })),
+      options: [...target.options]
+          .map(option => ({
+            text: this._recorder.injectedScript.utils.normalizeWhiteSpace(option.text),
+            value: option.value,
+            disabled: option.disabled,
+          }))
+          .filter(option => !!option.text && !!option.value),
     };
   }
 
@@ -1318,7 +1308,7 @@ class SelectAssertionTool implements RecorderTool {
     if (!action)
       return;
     void this._recorder.recordAction(action);
-    const mode = action.name === 'assertSelectInitial' ? 'assertingSelectInitial' : 'assertingSelectOptions';
+    const mode = 'assertingSelectOptions';
     this._recorder.setMode(this._recorder.modeAfterAssertion(mode));
     this._recorder.overlay?.flashToolSucceeded(mode);
   }
@@ -1385,7 +1375,6 @@ class Overlay {
           'assertingChecked': 'recording-inspecting',
           'assertingUnchecked': 'recording-inspecting',
           'assertingValue': 'recording-inspecting',
-          'assertingSelectInitial': 'recording-inspecting',
           'assertingSelectOptions': 'recording-inspecting',
           'assertingSnapshot': 'recording-inspecting',
         };
@@ -1419,7 +1408,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingSelectInitial' | 'assertingSelectOptions' | 'scrollIntoView') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingSelectOptions' | 'scrollIntoView') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
@@ -1522,8 +1511,7 @@ export class Recorder {
       'assertingChecked': new CheckedStateAssertionTool(this, true),
       'assertingUnchecked': new CheckedStateAssertionTool(this, false),
       'assertingValue': new TextAssertionTool(this, 'value'),
-      'assertingSelectInitial': new SelectAssertionTool(this, 'initial'),
-      'assertingSelectOptions': new SelectAssertionTool(this, 'options'),
+      'assertingSelectOptions': new SelectAssertionTool(this),
       'assertingSnapshot': new TextAssertionTool(this, 'snapshot'),
     };
     this._currentTool = this._tools.none;

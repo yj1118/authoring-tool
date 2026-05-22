@@ -145,10 +145,8 @@ export class JavaLanguageGenerator implements LanguageGenerator {
         const assertion = action.value ? `hasValue(${quote(action.value)})` : `isEmpty()`;
         return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).${assertion};`;
       }
-      case 'assertSelectInitial':
-        return `// Select initial value assertion is available in the authoring runtime: ${JSON.stringify({ matchBy: 'text', match: 'exact', expected: action.selectedText, text: action.selectedText, value: action.selectedValue })}`;
       case 'assertSelectOptions':
-        return `// Select options assertion is available in the authoring runtime: ${JSON.stringify({ matchBy: 'text', match: 'exact', texts: action.options.map(option => option.text), values: action.options.map(option => option.value) })}`;
+        return `// Select options assertion is available in the authoring runtime: ${JSON.stringify({ matchBy: ['text', 'value'], match: 'contains', texts: action.options.map(option => option.text), values: action.options.map(option => option.value), allTexts: action.options.map(option => option.text), allValues: action.options.map(option => option.value) })}`;
       case 'assertSnapshot':
         return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).matchesAriaSnapshot(${quote(action.ariaSnapshot)});`;
     }

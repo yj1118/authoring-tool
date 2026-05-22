@@ -127,11 +127,16 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         const assertion = action.value ? `toHaveValue(${quote(action.value)})` : `toBeEmpty()`;
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).${assertion};`;
       }
-      case 'assertSelectInitial':
-        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toHaveSelectInitial(${JSON.stringify({ matchBy: 'text', match: 'exact', expected: action.selectedText, text: action.selectedText, value: action.selectedValue })});`;
       case 'assertSelectOptions': {
         const sampledOptions = sampleSelectOptions(action.options);
-        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toHaveSelectOptions(${JSON.stringify({ matchBy: ['text', 'value'], match: 'contains', texts: sampledOptions.map(option => option.text), values: sampledOptions.map(option => option.value) })});`;
+        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toHaveSelectOptions(${JSON.stringify({
+          matchBy: ['text', 'value'],
+          match: 'contains',
+          texts: sampledOptions.map(option => option.text),
+          values: sampledOptions.map(option => option.value),
+          allTexts: action.options.map(option => option.text),
+          allValues: action.options.map(option => option.value),
+        })});`;
       }
       case 'assertSnapshot': {
         const commentIfNeeded = this._isTest ? '' : '// ';
