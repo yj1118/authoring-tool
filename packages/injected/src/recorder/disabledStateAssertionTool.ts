@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-import { resolveCheckedControlTarget } from './checkedControlResolver';
-
 import type * as actions from '@recorder/actions';
 import type { HighlightModelWithSelector, Recorder, RecorderTool } from './recorder';
 
-const checkedStateHighlightColor = '#8acae480';
+const disabledStateHighlightColor = '#8acae480';
 
-export class CheckedStateAssertionTool implements RecorderTool {
+export class DisabledStateAssertionTool implements RecorderTool {
+  private _committedOnPointerUp = false;
   private _hoverHighlight: HighlightModelWithSelector | null = null;
-  private _pendingAction: actions.AssertCheckedAction | null = null;
+  private _pendingAction: actions.AssertDisabledAction | null = null;
   private _recorder: Recorder;
 
   constructor(recorder: Recorder) {
@@ -35,6 +34,7 @@ export class CheckedStateAssertionTool implements RecorderTool {
   }
 
   uninstall() {
+    this._committedOnPointerUp = false;
     this._hoverHighlight = null;
     this._pendingAction = null;
   }
@@ -45,23 +45,34 @@ export class CheckedStateAssertionTool implements RecorderTool {
 
   onClick(event: MouseEvent) {
     consumeEvent(event);
+    if (this._committedOnPointerUp) {
+      this._committedOnPointerUp = false;
+      return;
+    }
     if (event.button)
       return;
     const action = this._pendingAction ?? this._generateAction(this._recorder.deepEventTarget(event));
     this._pendingAction = null;
-    if (!action)
-      return;
-    const mode = 'assertingChecked';
-    void this._recorder.recordAction(action);
-    this._recorder.setMode(this._recorder.modeAfterAssertion(mode));
-    this._recorder.overlay?.flashToolSucceeded(mode);
+    this._commitAssertion(action);
   }
 
   onMouseDown(event: MouseEvent) {
+    this._committedOnPointerUp = false;
     const target = this._recorder.deepEventTarget(event);
     this._pendingAction = this._generateAction(target);
     if (this._pendingAction)
       event.preventDefault();
+  }
+
+  onPointerUp(event: PointerEvent) {
+    const element = this._targetElement(this._recorder.deepEventTarget(event));
+    const action = this._pendingAction ?? (element ? this._generateActionForElement(element) : null);
+    if (!action?.disabled || !element?.matches(':disabled'))
+      return;
+    consumeEvent(event);
+    this._committedOnPointerUp = true;
+    this._pendingAction = null;
+    this._commitAssertion(action);
   }
 
   onMouseMove(event: MouseEvent) {
@@ -83,34 +94,56 @@ export class CheckedStateAssertionTool implements RecorderTool {
     this._recorder.updateHighlight(this._hoverHighlight, false);
   }
 
-  private _generateAction(target: Element): actions.AssertCheckedAction | null {
-    const resolution = resolveCheckedControlTarget(target);
-    if (!resolution.ok)
+  private _generateAction(target: Element): actions.AssertDisabledAction | null {
+    const element = this._targetElement(target);
+    if (!element)
       return null;
-    const generated = this._recorder.injectedScript.generateSelector(resolution.control, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    return this._generateActionForElement(element);
+  }
+
+  private _generateActionForElement(element: Element): actions.AssertDisabledAction | null {
+    const generated = this._recorder.injectedScript.generateSelector(element, { testIdAttributeName: this._recorder.state.testIdAttributeName });
     if (!generated.selector)
       return null;
     return {
-      name: 'assertChecked',
+      name: 'assertDisabled',
       selector: generated.selector,
       signals: [],
-      checked: resolution.control.checked,
+      disabled: this._isDisabled(element),
     };
   }
 
   private _buildHighlight(target: Element): HighlightModelWithSelector | null {
-    const resolution = resolveCheckedControlTarget(target);
-    if (!resolution.ok)
+    const element = this._targetElement(target);
+    if (!element)
       return null;
-    const generated = this._recorder.injectedScript.generateSelector(resolution.control, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    const generated = this._recorder.injectedScript.generateSelector(element, { testIdAttributeName: this._recorder.state.testIdAttributeName });
     if (!generated.selector)
       return null;
     return {
       selector: generated.selector,
-      elements: [resolution.highlightElement],
-      color: checkedStateHighlightColor,
+      elements: generated.elements.length ? generated.elements : [element],
+      color: disabledStateHighlightColor,
       tooltipText: generated.selector,
     };
+  }
+
+  private _targetElement(target: Element): Element | null {
+    const element = this._recorder.injectedScript.retarget(target, 'follow-label');
+    return element?.isConnected ? element : null;
+  }
+
+  private _isDisabled(element: Element): boolean {
+    return this._recorder.injectedScript.elementState(element, 'disabled').matches;
+  }
+
+  private _commitAssertion(action: actions.AssertDisabledAction | null) {
+    if (!action)
+      return;
+    const mode = 'assertingDisabled';
+    void this._recorder.recordAction(action);
+    this._recorder.setMode(this._recorder.modeAfterAssertion(mode));
+    this._recorder.overlay?.flashToolSucceeded(mode);
   }
 }
 

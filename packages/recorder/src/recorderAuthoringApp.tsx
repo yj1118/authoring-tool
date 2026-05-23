@@ -48,8 +48,8 @@ import {
   type RecorderModeButton,
 } from './recorder/toolbar/recorderToolCatalog';
 import {
-  ActiveTargetController,
   recordingTargetKey,
+  recordingTargetViewModel,
 } from './recorder/targets/recordingTargets';
 
 const launchContextTimeoutMs = 8000;
@@ -66,23 +66,11 @@ export const RecorderAuthoringApp: React.FC = () => {
   const [instructionDrafts, setInstructionDrafts] = React.useState<RecorderInstructionDraftMap>(() => new Map());
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
-  const [targetContexts, setTargetContexts] = React.useState<RecordingLaunchContext[]>([]);
   const [status, setStatus] = React.useState<RecorderStatus>({ kind: 'idle' });
   const [positionActionRecordingEnabled, setPositionActionRecordingEnabledState] = React.useState(false);
   const saveInFlightRef = React.useRef(false);
 
-  const upsertTargetContext = React.useCallback((context: RecordingLaunchContext) => {
-    setTargetContexts(current => {
-      const controller = new ActiveTargetController<RecordingLaunchContext>();
-      for (const item of current)
-        controller.upsert(item);
-      controller.upsert(context);
-      return controller.contexts();
-    });
-  }, []);
-
   const activateLaunchContext = React.useCallback((context: RecordingLaunchContext) => {
-    upsertTargetContext(context);
     setLaunchContext(context);
     setMode('standby');
     setPositionActionRecordingEnabledState(false);
@@ -90,7 +78,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     setDeletedActionKeys(new Set());
     setInstructionDrafts(new Map());
     setStatus({ kind: 'ready' });
-  }, [upsertTargetContext]);
+  }, []);
 
   React.useEffect(() => {
     document.title = pageUrl ? `${i18n.windowTitle} - ${pageUrl}` : i18n.windowTitle;
@@ -142,8 +130,6 @@ export const RecorderAuthoringApp: React.FC = () => {
     ).then(context => {
       if (disposed)
         return;
-      if (context)
-        upsertTargetContext(context);
       setLaunchContext(context);
       setStatus(current => launchReadyStatus(current));
     }).catch(error => {
@@ -155,7 +141,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     return () => {
       disposed = true;
     };
-  }, [backend, upsertTargetContext]);
+  }, [backend]);
 
   const basePreviewActions = React.useMemo(() => choosePreviewActions(sources, deletedActionKeys), [deletedActionKeys, sources]);
 
@@ -241,11 +227,10 @@ export const RecorderAuthoringApp: React.FC = () => {
 
   const activeTargetKey = launchContext ? recordingTargetKey(launchContext.target) : undefined;
   const targetItems = React.useMemo(() => {
-    const controller = new ActiveTargetController<RecordingLaunchContext>();
-    for (const context of targetContexts)
-      controller.upsert(context);
-    return controller.viewModels(locale);
-  }, [locale, targetContexts]);
+    return launchContext
+      ? [{ context: launchContext, viewModel: recordingTargetViewModel(launchContext.target, locale) }]
+      : [];
+  }, [launchContext, locale]);
 
   const switchTarget = React.useCallback((nextContext: RecordingLaunchContext) => {
     if (isSaving)
@@ -400,7 +385,7 @@ export const RecorderAuthoringApp: React.FC = () => {
           <button className='selector-authoring-secondary-button' disabled={!sources.length || isSaving} onClick={clear} title={i18n.tooltip.clear} type='button'>{i18n.clear}</button>
           <button className='selector-authoring-primary-button recorder-authoring-save-button' disabled={!canSave} onClick={() => void save()} title={hasUnconfirmedInstructions ? instructionLabels.confirmBeforeSave : generatedSummary.ok ? i18n.tooltip.save : generatedSummaryMessage} type='button'>{i18n.save}</button>
         </div>
-        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertNotDisabled} / ${i18n.assertChecked} / ${i18n.assertUnchecked} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertPasswordInput} / ${i18n.assertSelectOptions} / ${i18n.assertAria}`}>
+        <div className='recorder-authoring-toolbar-row recorder-authoring-toolbar-row-assertions' aria-label={`${i18n.assertVisible} / ${i18n.assertDisabled} / ${i18n.assertChecked} / ${i18n.assertText} / ${i18n.assertValue} / ${i18n.assertPasswordInput} / ${i18n.assertSelectOptions} / ${i18n.assertAria}`}>
           {assertionModeButtons.map(renderModeButton)}
         </div>
       </div>

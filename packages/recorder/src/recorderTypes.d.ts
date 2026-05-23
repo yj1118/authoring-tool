@@ -30,9 +30,7 @@ export type Mode =
   | 'scrollIntoView'
   | 'assertingVisibility'
   | 'assertingDisabled'
-  | 'assertingNotDisabled'
   | 'assertingChecked'
-  | 'assertingUnchecked'
   | 'assertingValue'
   | 'assertingPasswordInput'
   | 'assertingSnapshot';

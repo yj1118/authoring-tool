@@ -17,12 +17,16 @@
 import type * as React from 'react';
 
 export type RecorderInstructionLabels = {
+  checkedAssertionTitle: string;
+  disabledAssertionTitle: string;
   textAssertionTitle: string;
   valueAssertionTitle: string;
   passwordInputAssertionTitle: string;
   selectOptionsAssertionTitle: string;
   expectedText: string;
   expectedValue: string;
+  expectedCheckedState: string;
+  expectedDisabledState: string;
   optionTexts: string;
   optionValues: string;
   containsText: string;
@@ -32,6 +36,10 @@ export type RecorderInstructionLabels = {
   matchByValue: string;
   exactOptions: string;
   containsOptions: string;
+  checkedState: string;
+  uncheckedState: string;
+  disabledState: string;
+  notDisabledState: string;
   confirm: string;
   edit: string;
   reset: string;

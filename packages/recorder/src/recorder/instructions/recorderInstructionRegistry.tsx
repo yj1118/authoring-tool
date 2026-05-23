@@ -17,12 +17,16 @@
 import type { ActionPreviewEntry } from '../sources/recordedSourceModel';
 import type { RecorderInstructionDraft, RecorderInstructionDraftMap, RecorderInstructionLabels, ResolvedRecorderInstruction } from './types';
 import * as React from 'react';
+import { assertCheckedInstructionDefinition } from './assertChecked/assertCheckedInstruction';
+import { assertDisabledInstructionDefinition } from './assertDisabled/assertDisabledInstruction';
 import { assertPasswordInputInstructionDefinition } from './assertPasswordInput/assertPasswordInputInstruction';
 import { assertSelectOptionsInstructionDefinition } from './assertSelectOptions/assertSelectOptionsInstruction';
 import { assertTextInstructionDefinition } from './assertText/assertTextInstruction';
 import { assertValueInstructionDefinition } from './assertValue/assertValueInstruction';
 
 const recorderInstructionDefinitions = [
+  assertCheckedInstructionDefinition,
+  assertDisabledInstructionDefinition,
   assertTextInstructionDefinition,
   assertValueInstructionDefinition,
   assertPasswordInputInstructionDefinition,

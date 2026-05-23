@@ -18,6 +18,7 @@
 // See DEPS.list for more details.
 import clipPaths from './clipPaths';
 import { CheckedStateAssertionTool } from './checkedStateAssertionTool';
+import { DisabledStateAssertionTool } from './disabledStateAssertionTool';
 import { PasswordInputAssertionTool } from './passwordInputAssertionTool';
 
 import type { Point } from '@isomorphic/types';
@@ -29,8 +30,8 @@ import type * as actions from '@recorder/actions';
 import type { ElementInfo, Mode, OverlayState, UIState } from '@recorder/recorderTypes';
 import type { Language } from '@isomorphic/locatorGenerators';
 
-type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'assertingSnapshot';
-type InspectToolIntent = 'pickSelector' | 'assertVisible' | 'assertDisabled' | 'assertNotDisabled' | 'scrollIntoView';
+type AssertionMode = 'assertingText' | 'assertingVisibility' | 'assertingDisabled' | 'assertingChecked' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'assertingSnapshot';
+type InspectToolIntent = 'pickSelector' | 'assertVisible' | 'scrollIntoView';
 type RecorderOptions = {
   recorderMode?: 'default' | 'api';
   hideToolbar?: boolean;
@@ -256,7 +257,7 @@ class InspectTool implements RecorderTool {
   }
 
   private _pickHoveredModel() {
-    if ((this._intent === 'assertVisible' || this._intent === 'assertDisabled' || this._intent === 'assertNotDisabled' || this._intent === 'scrollIntoView') && this._hoveredModel?.selector)
+    if ((this._intent === 'assertVisible' || this._intent === 'scrollIntoView') && this._hoveredModel?.selector)
       this._commit(this._hoveredModel.selector, this._hoveredModel);
     else if (this._hoveredModel?.selector)
       this._recorder.pickHoveredSelector(this._hoveredModel);
@@ -279,17 +280,6 @@ class InspectTool implements RecorderTool {
       });
       this._recorder.setMode(this._recorder.modeAfterAssertion('assertingVisibility'));
       this._recorder.overlay?.flashToolSucceeded('assertingVisibility');
-    } else if (this._intent === 'assertDisabled' || this._intent === 'assertNotDisabled') {
-      const expectedDisabled = this._intent === 'assertDisabled';
-      void this._recorder.recordAction({
-        name: 'assertDisabled',
-        selector,
-        signals: [],
-        disabled: expectedDisabled,
-      });
-      const nextMode = expectedDisabled ? 'assertingDisabled' : 'assertingNotDisabled';
-      this._recorder.setMode(this._recorder.modeAfterAssertion(nextMode));
-      this._recorder.overlay?.flashToolSucceeded(nextMode);
     } else if (this._intent === 'scrollIntoView') {
       void this._recorder.recordAction({
         name: 'scrollIntoView',
@@ -1372,9 +1362,7 @@ class Overlay {
           'assertingText': 'recording-inspecting',
           'assertingVisibility': 'recording-inspecting',
           'assertingDisabled': 'recording-inspecting',
-          'assertingNotDisabled': 'recording-inspecting',
           'assertingChecked': 'recording-inspecting',
-          'assertingUnchecked': 'recording-inspecting',
           'assertingValue': 'recording-inspecting',
           'assertingPasswordInput': 'recording-inspecting',
           'assertingSelectOptions': 'recording-inspecting',
@@ -1410,7 +1398,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingNotDisabled' | 'assertingChecked' | 'assertingUnchecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'scrollIntoView') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingChecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'scrollIntoView') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
@@ -1508,10 +1496,8 @@ export class Recorder {
       'scrollIntoView': new InspectTool(this, 'scrollIntoView'),
       'assertingText': new TextAssertionTool(this, 'text'),
       'assertingVisibility': new InspectTool(this, 'assertVisible'),
-      'assertingDisabled': new InspectTool(this, 'assertDisabled'),
-      'assertingNotDisabled': new InspectTool(this, 'assertNotDisabled'),
-      'assertingChecked': new CheckedStateAssertionTool(this, true),
-      'assertingUnchecked': new CheckedStateAssertionTool(this, false),
+      'assertingDisabled': new DisabledStateAssertionTool(this),
+      'assertingChecked': new CheckedStateAssertionTool(this),
       'assertingValue': new TextAssertionTool(this, 'value'),
       'assertingPasswordInput': new PasswordInputAssertionTool(this),
       'assertingSelectOptions': new SelectAssertionTool(this),

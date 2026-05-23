@@ -44,9 +44,7 @@ type RecorderAuthoringMessages = {
   stop: string;
   assertVisible: string;
   assertDisabled: string;
-  assertNotDisabled: string;
   assertChecked: string;
-  assertUnchecked: string;
   assertText: string;
   assertValue: string;
   assertPasswordInput: string;
@@ -79,9 +77,7 @@ type RecorderAuthoringMessages = {
     stop: string;
     assertVisible: string;
     assertDisabled: string;
-    assertNotDisabled: string;
     assertChecked: string;
-    assertUnchecked: string;
     assertText: string;
     assertValue: string;
     assertPasswordInput: string;
@@ -138,9 +134,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       stop: 'Stop',
       assertVisible: 'Visible',
       assertDisabled: 'Disabled',
-      assertNotDisabled: 'Not disabled',
       assertChecked: 'Checked',
-      assertUnchecked: 'Unchecked',
       assertText: 'Text',
       assertValue: 'Value',
       assertPasswordInput: 'Password',
@@ -172,10 +166,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: 'Pick a target element and record scrollIntoViewIfNeeded so replay can bring it into view.',
         stop: 'Stop recording new browser interactions.',
         assertVisible: 'Pick an element and record an assertion that it should be visible.',
-        assertDisabled: 'Pick an element and record an assertion that it should be disabled.',
-        assertNotDisabled: 'Pick an element and record an assertion that it should not be disabled.',
-        assertChecked: 'Pick a checkbox/radio, label, or parent container and record that it should be checked.',
-        assertUnchecked: 'Pick a checkbox/radio, label, or parent container and record that it should be unchecked.',
+        assertDisabled: 'Pick an element and record its current disabled state.',
+        assertChecked: 'Pick a checkbox/radio, label, or parent container and record its checked state.',
         assertText: 'Pick an element and record an assertion for its current text.',
         assertValue: 'Pick a form control and record an assertion for its current value.',
         assertPasswordInput: 'Pick a target input and record that it should be a masked password field; value checking can be configured in the recorder panel.',
@@ -225,9 +217,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       stop: '停止',
       assertVisible: '可见性',
       assertDisabled: '禁用',
-      assertNotDisabled: '非禁用',
       assertChecked: '勾选',
-      assertUnchecked: '未勾选',
       assertText: '文本',
       assertValue: '值',
       assertPasswordInput: '密码框',
@@ -259,10 +249,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: '选择目标元素，并录制 scrollIntoViewIfNeeded，让回放时自动将它带入可见区域。',
         stop: '停止继续录制新的浏览器操作。',
         assertVisible: '选择页面元素，并录制“该元素应该可见”的断言。',
-        assertDisabled: '选择页面元素，并录制“该元素应该处于禁用状态”的断言。',
-        assertNotDisabled: '选择页面元素，并录制“该元素不应处于禁用状态”的断言。',
-        assertChecked: '选择 checkbox/radio、label 或父容器，并录制“应处于勾选状态”的断言。',
-        assertUnchecked: '选择 checkbox/radio、label 或父容器，并录制“应处于未勾选状态”的断言。',
+        assertDisabled: '选择页面元素，并录制它当前的禁用状态。',
+        assertChecked: '选择 checkbox/radio、label 或父容器，并录制它当前的勾选状态断言。',
         assertText: '选择页面元素，并录制它当前文本内容的断言。',
         assertValue: '选择表单控件，并录制它当前 value 的断言。',
         assertPasswordInput: '选择目标输入框，并录制它应为密码掩码输入框的断言；是否校验值可在录制面板配置。',
@@ -312,9 +300,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       stop: '停止',
       assertVisible: '可見性',
       assertDisabled: '停用',
-      assertNotDisabled: '非停用',
       assertChecked: '勾選',
-      assertUnchecked: '未勾選',
       assertText: '文字',
       assertValue: '值',
       assertPasswordInput: '密碼框',
@@ -346,10 +332,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: '選擇目標元素，並錄製 scrollIntoViewIfNeeded，讓回放時自動將它帶入可見區域。',
         stop: '停止繼續錄製新的瀏覽器操作。',
         assertVisible: '選取頁面元素，並錄製「該元素應可見」的斷言。',
-        assertDisabled: '選取頁面元素，並錄製「該元素應處於停用狀態」的斷言。',
-        assertNotDisabled: '選取頁面元素，並錄製「該元素不應處於停用狀態」的斷言。',
-        assertChecked: '選取 checkbox/radio、label 或父容器，並錄製「應處於勾選狀態」的斷言。',
-        assertUnchecked: '選取 checkbox/radio、label 或父容器，並錄製「應處於未勾選狀態」的斷言。',
+        assertDisabled: '選取頁面元素，並錄製它目前的停用狀態。',
+        assertChecked: '選取 checkbox/radio、label 或父容器，並錄製它目前的勾選狀態斷言。',
         assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
         assertValue: '選取表單控制項，並錄製它目前 value 的斷言。',
         assertPasswordInput: '選取目標輸入框，並錄製它應為密碼遮罩輸入框的斷言；是否校驗值可在錄製面板設定。',
@@ -399,9 +383,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       stop: '停止',
       assertVisible: '表示',
       assertDisabled: '無効',
-      assertNotDisabled: '非無効',
       assertChecked: 'チェック済み',
-      assertUnchecked: '未チェック',
       assertText: 'テキスト',
       assertValue: '値',
       assertPasswordInput: 'パスワード',
@@ -433,10 +415,8 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         locate: '対象要素を選択し、再生時に表示領域へ入れる scrollIntoViewIfNeeded を録画します。',
         stop: '新しいブラウザー操作の録画を停止します。',
         assertVisible: '要素を選択し、その要素が表示されていることを確認するアサーションを録画します。',
-        assertDisabled: '要素を選択し、その要素が無効状態であることを確認するアサーションを録画します。',
-        assertNotDisabled: '要素を選択し、その要素が無効状態ではないことを確認するアサーションを録画します。',
-        assertChecked: 'checkbox/radio、label、または親コンテナを選択し、チェック済みであることを確認するアサーションを録画します。',
-        assertUnchecked: 'checkbox/radio、label、または親コンテナを選択し、未チェックであることを確認するアサーションを録画します。',
+        assertDisabled: '要素を選択し、現在の無効状態を録画します。',
+        assertChecked: 'checkbox/radio、label、または親コンテナを選択し、現在のチェック状態を確認するアサーションを録画します。',
         assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',
         assertValue: 'フォームコントロールを選択し、現在の value を確認するアサーションを録画します。',
         assertPasswordInput: '対象の入力欄を選択し、マスクされたパスワード入力であることを確認するアサーションを録画します。値の確認はレコーダーパネルで設定できます。',

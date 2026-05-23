@@ -22,9 +22,7 @@ import { buildAssertionModeButtons } from './recorderToolCatalog';
 const i18n = {
   assertVisible: 'visible',
   assertDisabled: 'disabled',
-  assertNotDisabled: 'not disabled',
   assertChecked: 'checked',
-  assertUnchecked: 'unchecked',
   assertText: 'text',
   assertValue: 'value',
   assertPasswordInput: 'password',
@@ -33,9 +31,7 @@ const i18n = {
   tooltip: {
     assertVisible: 'visible tip',
     assertDisabled: 'disabled tip',
-    assertNotDisabled: 'not disabled tip',
     assertChecked: 'checked tip',
-    assertUnchecked: 'unchecked tip',
     assertText: 'text tip',
     assertValue: 'value tip',
     assertPasswordInput: 'password tip',
@@ -44,15 +40,13 @@ const i18n = {
   },
 };
 
-test('assertion toolbar exposes separate checked and unchecked modes', () => {
+test('assertion toolbar exposes merged assertion modes', () => {
   const buttons = buildAssertionModeButtons(i18n);
 
   assert.deepEqual(buttons.map(button => button.mode), [
     'assertingVisibility',
     'assertingDisabled',
-    'assertingNotDisabled',
     'assertingChecked',
-    'assertingUnchecked',
     'assertingText',
     'assertingValue',
     'assertingPasswordInput',
@@ -60,5 +54,5 @@ test('assertion toolbar exposes separate checked and unchecked modes', () => {
     'assertingSnapshot',
   ]);
   assert.equal(buttons.find(button => button.mode === 'assertingChecked')?.label, 'checked');
-  assert.equal(buttons.find(button => button.mode === 'assertingUnchecked')?.label, 'unchecked');
+  assert.equal(buttons.filter(button => button.mode === 'assertingChecked').length, 1);
 });
