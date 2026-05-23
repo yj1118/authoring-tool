@@ -15,6 +15,7 @@
  */
 
 import type { RecordingLaunchContext, RecordingSaveRequest, RecordingSaveResult } from '@recorder/recorderTypes';
+import { isRecordingAuthoringModel } from '@recorder/recorder/authoringModel/authoringModelHydrator';
 import { createRecordingAuthoringError, recordingReasonCodes, type RecordingReasonCode } from '@recorder/recorder/errors/recordingErrors';
 import { parseRecordingTargetFromPayload, recordingTargetModuleKind } from '@recorder/recorder/targets/recordingTargets';
 
@@ -83,6 +84,7 @@ function parseLaunchContextPayload(parsed: unknown): RecordingLaunchContext | nu
     orchestratorHeaders: normalizeHeaders(parsed.orchestratorHeaders),
     recordingBridgeBaseUrl: normalizeOptionalString(parsed.recordingBridgeBaseUrl),
     recordingBridgeToken: normalizeOptionalString(parsed.recordingBridgeToken),
+    initialAuthoringModel: isRecordingAuthoringModel(parsed.initialAuthoringModel) ? parsed.initialAuthoringModel : null,
   };
 }
 
@@ -182,6 +184,7 @@ export async function saveRecordingThroughClient(request: RecordingSaveRequest):
         assertionCount: request.assertionCount,
         sourceId: request.sourceId,
         timeoutMs: request.timeoutMs,
+        authoringModel: request.authoringModel ?? null,
       }),
     });
   } catch (error) {

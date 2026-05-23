@@ -101,6 +101,7 @@ export type Source = {
   header?: string;
   footer?: string;
   actions?: string[];
+  actionIds?: string[];
 };
 
 export type RecorderLocale = 'en' | 'zh-CN' | 'zh-TW' | 'ja-JP';
@@ -139,6 +140,30 @@ export type ExecutionTaskRecordingTarget = {
 
 export type RecordingTarget = CaseStepRecordingTarget | ExecutionTaskRecordingTarget;
 
+export type RecordingAuthoringInstructionDraftV1 = {
+  typeId: string;
+  config: unknown;
+  expanded: boolean;
+  confirmed: boolean;
+};
+
+export type RecordingAuthoringActionV1 = {
+  actionId: string;
+  actionText: string;
+  instructionDraft?: RecordingAuthoringInstructionDraftV1 | null;
+};
+
+export type RecordingAuthoringModelV1 = {
+  schema: 'recording_authoring_model@1';
+  sourceId: string;
+  createdAt: string;
+  actions: RecordingAuthoringActionV1[];
+  tool?: {
+    name?: string;
+    version?: string;
+  };
+};
+
 export type RecordingLaunchContext = {
   target: RecordingTarget;
   caseId: string;
@@ -153,6 +178,7 @@ export type RecordingLaunchContext = {
   orchestratorHeaders?: Record<string, string>;
   recordingBridgeBaseUrl?: string;
   recordingBridgeToken?: string;
+  initialAuthoringModel?: RecordingAuthoringModelV1 | null;
 };
 
 export type RecordingSaveRequest = {
@@ -167,6 +193,7 @@ export type RecordingSaveRequest = {
     name: string;
     version: number;
   };
+  authoringModel?: RecordingAuthoringModelV1 | null;
 };
 
 export type RecordingSaveResult = {

@@ -18,8 +18,10 @@ import { generateModuleHandlerScriptFromSources } from '../codegen/moduleHandler
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from '../errors/recordingErrors';
 import { failedStatus, isRecorderCaptureMode } from '../state/recorderStatus';
 import { applyRecordedActionEdits } from '../sources/recordedSourceModel';
+import { buildRecordingAuthoringModel } from '../authoringModel/authoringModelBuilder';
 
 import type { Mode, RecordingLaunchContext, RecorderBackend, Source } from '../../recorderTypes';
+import type { RecorderInstructionDraftMap } from '../instructions/types';
 import type { RecorderStatus } from '../state/recorderStatus';
 
 type SetState<T> = (value: T | ((current: T) => T)) => void;
@@ -28,6 +30,7 @@ export async function saveRecordingWorkflow(input: {
   backend: RecorderBackend;
   actionTextOverrides: ReadonlyMap<string, string>;
   deletedActionKeys: Set<string>;
+  instructionDrafts: RecorderInstructionDraftMap;
   disablePositionActionRecordingIfNeeded: () => Promise<void>;
   launchContext: RecordingLaunchContext | null;
   mode: Mode;
@@ -50,7 +53,15 @@ export async function saveRecordingWorkflow(input: {
     await input.disablePositionActionRecordingIfNeeded();
     const latestSources = await input.backend.prepareRecordingSources();
     input.setSources(latestSources);
-    const generated = generateModuleHandlerScriptFromSources(applyRecordedActionEdits(latestSources, input.deletedActionKeys, input.actionTextOverrides));
+    const editedSources = applyRecordedActionEdits(latestSources, input.deletedActionKeys, input.actionTextOverrides);
+    const generated = generateModuleHandlerScriptFromSources(editedSources);
+    const authoringModel = buildRecordingAuthoringModel({
+      actionTextOverrides: input.actionTextOverrides,
+      deletedActionKeys: input.deletedActionKeys,
+      instructionDrafts: input.instructionDrafts,
+      sourceId: generated.sourceId,
+      sources: latestSources,
+    });
     input.setStatus({ kind: 'uploading' });
     const result = await input.backend.saveRecording({
       scriptText: generated.scriptText,
@@ -61,6 +72,7 @@ export async function saveRecordingWorkflow(input: {
       finalUrl: input.pageUrl,
       timeoutMs: generated.timeoutMs,
       recordingApi: generated.recordingApi,
+      authoringModel,
     });
     input.setStatus({ kind: 'committing' });
     if (result.ok !== true)

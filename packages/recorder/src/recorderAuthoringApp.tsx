@@ -20,6 +20,7 @@ import './recorder.css';
 import { createRecorderBackend } from './recorderBackend';
 import { getRecorderAuthoringMessages, normalizeRecorderLocale } from './messages';
 import { generateModuleHandlerScriptFromSources } from './recorder/codegen/moduleHandlerScript';
+import { hydrateRecordingAuthoringModel } from './recorder/authoringModel/authoringModelHydrator';
 import { normalizeRecordingAuthoringError, recordingReasonCodes } from './recorder/errors/recordingErrors';
 import { recorderInstructionLabels } from './recorder/instructions/labels';
 import {
@@ -71,12 +72,13 @@ export const RecorderAuthoringApp: React.FC = () => {
   const saveInFlightRef = React.useRef(false);
 
   const activateLaunchContext = React.useCallback((context: RecordingLaunchContext) => {
+    const hydrated = hydrateRecordingAuthoringModel(context.initialAuthoringModel);
     setLaunchContext(context);
     setMode('standby');
     setPositionActionRecordingEnabledState(false);
-    setSources([]);
+    setSources(hydrated.sources);
     setDeletedActionKeys(new Set());
-    setInstructionDrafts(new Map());
+    setInstructionDrafts(hydrated.instructionDrafts);
     setStatus({ kind: 'ready' });
   }, []);
 
@@ -130,7 +132,10 @@ export const RecorderAuthoringApp: React.FC = () => {
     ).then(context => {
       if (disposed)
         return;
-      setLaunchContext(context);
+      if (context)
+        activateLaunchContext(context);
+      else
+        setLaunchContext(context);
       setStatus(current => launchReadyStatus(current));
     }).catch(error => {
       if (disposed)
@@ -315,6 +320,7 @@ export const RecorderAuthoringApp: React.FC = () => {
         backend,
         deletedActionKeys,
         disablePositionActionRecordingIfNeeded,
+        instructionDrafts,
         launchContext,
         mode,
         pageUrl,
@@ -326,7 +332,7 @@ export const RecorderAuthoringApp: React.FC = () => {
     } finally {
       saveInFlightRef.current = false;
     }
-  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, generatedSummary.ok, hasUnconfirmedInstructions, i18n.saveFailed, instructionActionTextOverrides, launchContext, mode, pageUrl]);
+  }, [backend, deletedActionKeys, disablePositionActionRecordingIfNeeded, generatedSummary.ok, hasUnconfirmedInstructions, i18n.saveFailed, instructionActionTextOverrides, instructionDrafts, launchContext, mode, pageUrl]);
 
   const hasGeneratedError = !generatedSummary.ok && previewActions.length > 0;
   const statusTone = status.kind === 'saved'

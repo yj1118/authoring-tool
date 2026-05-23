@@ -39,8 +39,8 @@ function hashActionText(action: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function actionKey(source: Source, action: string, index: number): string {
-  return `${source.id}:${index}:${hashActionText(action)}`;
+export function recordedActionKey(source: Source, action: string, index: number): string {
+  return source.actionIds?.[index] ?? `${source.id}:${index}:${hashActionText(action)}`;
 }
 
 export function applyRecordedActionEdits(sources: Source[], deletedActionKeys: Set<string>, actionTextOverrides: ReadonlyMap<string, string>): Source[] {
@@ -50,12 +50,13 @@ export function applyRecordedActionEdits(sources: Source[], deletedActionKeys: S
     if (!source.isRecorded || !source.actions?.length)
       return source;
     const actions = source.actions.flatMap((action, index) => {
-      const key = actionKey(source, action, index);
+      const key = recordedActionKey(source, action, index);
       if (deletedActionKeys.has(key))
         return [];
       return [actionTextOverrides.get(key) ?? action];
     });
-    return { ...source, actions };
+    const actionIds = source.actionIds?.filter((id, index) => !deletedActionKeys.has(id) && source.actions?.[index] !== undefined);
+    return { ...source, actions, ...(actionIds ? { actionIds } : {}) };
   });
 }
 
@@ -69,7 +70,7 @@ export function choosePreviewActions(sources: Source[], deletedActionKeys: Set<s
   if (!source)
     return [];
   return (source.actions ?? []).flatMap((action, index) => {
-    const key = actionKey(source, action, index);
+    const key = recordedActionKey(source, action, index);
     if (deletedActionKeys.has(key))
       return [];
     const actionText = actionTextOverrides.get(key) ?? action;
