@@ -24,6 +24,7 @@ import {
 import { fallbackOperationBlockGenerator } from './fallbackOperationBlock';
 import { genericAssertionBlockGenerator } from './genericAssertionBlock';
 import { parseActionOperation, parseAssertionOperation } from './parsing';
+import { passwordInputAssertionBlockGenerator } from './passwordInputAssertionBlock';
 import { playwrightActionBlockGenerator } from './playwrightActionBlock';
 import { selectOptionsAssertionBlockGenerator } from './selectOptionsAssertionBlock';
 import type { OperationBlockContext, OperationBlockGenerator } from './types';
@@ -37,6 +38,7 @@ export {
 
 const OPERATION_BLOCK_GENERATORS: OperationBlockGenerator[] = [
   selectOptionsAssertionBlockGenerator,
+  passwordInputAssertionBlockGenerator,
   genericAssertionBlockGenerator,
   playwrightActionBlockGenerator,
   fallbackOperationBlockGenerator,

@@ -20,6 +20,7 @@ import type { RecorderInstructionLabels } from './types';
 const englishLabels: RecorderInstructionLabels = {
   textAssertionTitle: 'Text assertion',
   valueAssertionTitle: 'Value assertion',
+  passwordInputAssertionTitle: 'Password input assertion',
   selectOptionsAssertionTitle: 'Select options assertion',
   expectedText: 'Expected text',
   expectedValue: 'Expected value',
@@ -27,6 +28,7 @@ const englishLabels: RecorderInstructionLabels = {
   optionValues: 'Option value',
   containsText: 'Contains text',
   containsValue: 'Contains value',
+  assertPasswordValue: 'Verify value',
   matchByText: 'Match by text',
   matchByValue: 'Match by value',
   exactOptions: 'Full match',
@@ -42,6 +44,7 @@ const englishLabels: RecorderInstructionLabels = {
 const simplifiedChineseLabels: RecorderInstructionLabels = {
   textAssertionTitle: '文本断言',
   valueAssertionTitle: '值断言',
+  passwordInputAssertionTitle: '密码框断言',
   selectOptionsAssertionTitle: '下拉选项断言',
   expectedText: '期望文本',
   expectedValue: '期望值',
@@ -49,6 +52,7 @@ const simplifiedChineseLabels: RecorderInstructionLabels = {
   optionValues: '选项值',
   containsText: '包含文本',
   containsValue: '包含值',
+  assertPasswordValue: '校验输入值',
   matchByText: '按文本匹配',
   matchByValue: '按值匹配',
   exactOptions: '完整匹配',
@@ -64,6 +68,7 @@ const simplifiedChineseLabels: RecorderInstructionLabels = {
 const traditionalChineseLabels: RecorderInstructionLabels = {
   textAssertionTitle: '文字斷言',
   valueAssertionTitle: '值斷言',
+  passwordInputAssertionTitle: '密碼框斷言',
   selectOptionsAssertionTitle: '下拉選項斷言',
   expectedText: '期望文字',
   expectedValue: '期望值',
@@ -71,6 +76,7 @@ const traditionalChineseLabels: RecorderInstructionLabels = {
   optionValues: '選項值',
   containsText: '包含文字',
   containsValue: '包含值',
+  assertPasswordValue: '校驗輸入值',
   matchByText: '按文字比對',
   matchByValue: '按值比對',
   exactOptions: '完整比對',
@@ -86,6 +92,7 @@ const traditionalChineseLabels: RecorderInstructionLabels = {
 const japaneseLabels: RecorderInstructionLabels = {
   textAssertionTitle: 'テキストアサーション',
   valueAssertionTitle: '値アサーション',
+  passwordInputAssertionTitle: 'パスワード入力欄アサーション',
   selectOptionsAssertionTitle: 'セレクト項目アサーション',
   expectedText: '期待するテキスト',
   expectedValue: '期待する値',
@@ -93,6 +100,7 @@ const japaneseLabels: RecorderInstructionLabels = {
   optionValues: '項目値',
   containsText: 'テキストを含む',
   containsValue: '値を含む',
+  assertPasswordValue: '値を検証',
   matchByText: 'テキストで照合',
   matchByValue: '値で照合',
   exactOptions: '完全一致',

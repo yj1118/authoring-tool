@@ -136,6 +136,8 @@ export class PythonLanguageGenerator implements LanguageGenerator {
         const assertion = action.value ? `to_have_value(${quote(action.value)})` : `to_be_empty()`;
         return `expect(${subject}.${this._asLocator(action.selector)}).${assertion};`;
       }
+      case 'assertPasswordInput':
+        return `# Password input assertion is available in the authoring runtime: ${JSON.stringify({ assertValue: action.assertValue, expectedValue: action.assertValue ? action.value : '', matchMode: 'exact' })}`;
       case 'assertSelectOptions':
         return `# Select options assertion is available in the authoring runtime: ${JSON.stringify({ matchBy: ['text', 'value'], match: 'contains', texts: action.options.map(option => option.text), values: action.options.map(option => option.value), allTexts: action.options.map(option => option.text), allValues: action.options.map(option => option.value) })}`;
       case 'assertSnapshot':

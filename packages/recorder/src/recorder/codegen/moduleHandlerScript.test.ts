@@ -86,6 +86,21 @@ test('generates select option assertions through the evidence-aware recording AP
   assert.equal(generated.assertionCount, 1);
 });
 
+test('generates password input assertions through the dedicated recording API', () => {
+  const generated = generateModuleHandlerScriptFromSources([
+    sourceWithActions([
+      "await expect(page.getByLabel('Password')).toBePasswordInput({\"assertValue\":true,\"expectedValue\":\"\",\"matchMode\":\"exact\"});",
+    ]),
+  ]);
+
+  assert.match(generated.scriptText, /await recording\.assertPasswordInput\(\{/u);
+  assert.match(generated.scriptText, /locator: operation1Target/u);
+  assert.match(generated.scriptText, /expected: \{"assertValue":true,"expectedValue":"","matchMode":"exact"\}/u);
+  assert.doesNotMatch(generated.scriptText, /recording\.expect\(operation1Target\)\.toBePasswordInput/u);
+  assert.equal(generated.actionCount, 0);
+  assert.equal(generated.assertionCount, 1);
+});
+
 test('rejects generated recording scripts that still contain Playwright Test wrappers', () => {
   assert.throws(
       () => generateModuleHandlerScriptFromSources([

@@ -19,6 +19,7 @@ import type * as React from 'react';
 export type RecorderInstructionLabels = {
   textAssertionTitle: string;
   valueAssertionTitle: string;
+  passwordInputAssertionTitle: string;
   selectOptionsAssertionTitle: string;
   expectedText: string;
   expectedValue: string;
@@ -26,6 +27,7 @@ export type RecorderInstructionLabels = {
   optionValues: string;
   containsText: string;
   containsValue: string;
+  assertPasswordValue: string;
   matchByText: string;
   matchByValue: string;
   exactOptions: string;

@@ -27,6 +27,7 @@ const i18n = {
   assertUnchecked: 'unchecked',
   assertText: 'text',
   assertValue: 'value',
+  assertPasswordInput: 'password',
   assertSelectOptions: 'select options',
   assertAria: 'aria',
   tooltip: {
@@ -37,6 +38,7 @@ const i18n = {
     assertUnchecked: 'unchecked tip',
     assertText: 'text tip',
     assertValue: 'value tip',
+    assertPasswordInput: 'password tip',
     assertSelectOptions: 'select options tip',
     assertAria: 'aria tip',
   },
@@ -53,6 +55,7 @@ test('assertion toolbar exposes separate checked and unchecked modes', () => {
     'assertingUnchecked',
     'assertingText',
     'assertingValue',
+    'assertingPasswordInput',
     'assertingSelectOptions',
     'assertingSnapshot',
   ]);

@@ -30,14 +30,15 @@ export const InstructionTextInput: React.FC<{
   value: string;
   disabled?: boolean;
   readOnly?: boolean;
+  type?: 'text' | 'password';
   onChange: (value: string) => void;
-}> = ({ value, disabled, readOnly, onChange }) => {
+}> = ({ value, disabled, readOnly, type = 'text', onChange }) => {
   return <input
     className='recorder-instruction-input'
     disabled={disabled}
     onChange={event => onChange(event.target.value)}
     readOnly={readOnly}
-    type='text'
+    type={type}
     value={value}
   />;
 };

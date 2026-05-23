@@ -34,6 +34,7 @@ export type Mode =
   | 'assertingChecked'
   | 'assertingUnchecked'
   | 'assertingValue'
+  | 'assertingPasswordInput'
   | 'assertingSnapshot';
 
 export type ElementInfo = {

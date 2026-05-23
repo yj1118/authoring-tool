@@ -127,6 +127,8 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         const assertion = action.value ? `toHaveValue(${quote(action.value)})` : `toBeEmpty()`;
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).${assertion};`;
       }
+      case 'assertPasswordInput':
+        return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toBePasswordInput(${JSON.stringify(passwordInputExpected(action))});`;
       case 'assertSelectOptions': {
         const sampledOptions = sampleSelectOptions(action.options);
         return `${this._isTest ? '' : '// '}await expect(${subject}.${this._asLocator(action.selector)}).toHaveSelectOptions(${JSON.stringify({
@@ -199,6 +201,14 @@ ${useText ? '\ntest.use(' + useText + ');\n' : ''}
   await browser.close();
 })();`;
   }
+}
+
+function passwordInputExpected(action: actions.AssertPasswordInputAction) {
+  return {
+    assertValue: action.assertValue,
+    expectedValue: action.assertValue ? action.value : '',
+    matchMode: 'exact',
+  };
 }
 
 function formatOptions(value: any, hasArguments: boolean): string {

@@ -49,6 +49,7 @@ type RecorderAuthoringMessages = {
   assertUnchecked: string;
   assertText: string;
   assertValue: string;
+  assertPasswordInput: string;
   assertSelectOptions: string;
   assertAria: string;
   recordScroll: string;
@@ -83,6 +84,7 @@ type RecorderAuthoringMessages = {
     assertUnchecked: string;
     assertText: string;
     assertValue: string;
+    assertPasswordInput: string;
     assertSelectOptions: string;
     assertAria: string;
     recordScroll: string;
@@ -141,6 +143,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertUnchecked: 'Unchecked',
       assertText: 'Text',
       assertValue: 'Value',
+      assertPasswordInput: 'Password',
       assertSelectOptions: 'Options',
       assertAria: 'ARIA',
       recordScroll: 'Scroll',
@@ -175,6 +178,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertUnchecked: 'Pick a checkbox/radio, label, or parent container and record that it should be unchecked.',
         assertText: 'Pick an element and record an assertion for its current text.',
         assertValue: 'Pick a form control and record an assertion for its current value.',
+        assertPasswordInput: 'Pick a target input and record that it should be a masked password field; value checking can be configured in the recorder panel.',
         assertSelectOptions: 'Pick a select element and record an assertion for its option list.',
         assertAria: 'Pick a region and record an ARIA snapshot assertion for its accessibility structure.',
         recordScroll: 'When enabled, page scrolling is recorded without requiring another recording mode.',
@@ -226,6 +230,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertUnchecked: '未勾选',
       assertText: '文本',
       assertValue: '值',
+      assertPasswordInput: '密码框',
       assertSelectOptions: '下拉选项',
       assertAria: 'ARIA',
       recordScroll: '滚动',
@@ -260,6 +265,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertUnchecked: '选择 checkbox/radio、label 或父容器，并录制“应处于未勾选状态”的断言。',
         assertText: '选择页面元素，并录制它当前文本内容的断言。',
         assertValue: '选择表单控件，并录制它当前 value 的断言。',
+        assertPasswordInput: '选择目标输入框，并录制它应为密码掩码输入框的断言；是否校验值可在录制面板配置。',
         assertSelectOptions: '选择下拉框，并录制它当前选项列表的断言。',
         assertAria: '选择页面区域，并录制它无障碍语义结构的 ARIA snapshot 断言。',
         recordScroll: '开启后，页面滚动会被录制，无需同时开启其他模式。',
@@ -311,6 +317,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertUnchecked: '未勾選',
       assertText: '文字',
       assertValue: '值',
+      assertPasswordInput: '密碼框',
       assertSelectOptions: '下拉選項',
       assertAria: 'ARIA',
       recordScroll: '捲動',
@@ -345,6 +352,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertUnchecked: '選取 checkbox/radio、label 或父容器，並錄製「應處於未勾選狀態」的斷言。',
         assertText: '選取頁面元素，並錄製它目前文字內容的斷言。',
         assertValue: '選取表單控制項，並錄製它目前 value 的斷言。',
+        assertPasswordInput: '選取目標輸入框，並錄製它應為密碼遮罩輸入框的斷言；是否校驗值可在錄製面板設定。',
         assertSelectOptions: '選取下拉框，並錄製它目前選項列表的斷言。',
         assertAria: '選取頁面區域，並錄製它無障礙語意結構的 ARIA snapshot 斷言。',
         recordScroll: '開啟後，頁面捲動會被錄製，無需同時開啟其他模式。',
@@ -396,6 +404,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
       assertUnchecked: '未チェック',
       assertText: 'テキスト',
       assertValue: '値',
+      assertPasswordInput: 'パスワード',
       assertSelectOptions: '選択肢',
       assertAria: 'ARIA',
       recordScroll: 'スクロール',
@@ -430,6 +439,7 @@ const messages: Record<RecorderLocale, AuthoringMessages> = {
         assertUnchecked: 'checkbox/radio、label、または親コンテナを選択し、未チェックであることを確認するアサーションを録画します。',
         assertText: '要素を選択し、現在のテキスト内容を確認するアサーションを録画します。',
         assertValue: 'フォームコントロールを選択し、現在の value を確認するアサーションを録画します。',
+        assertPasswordInput: '対象の入力欄を選択し、マスクされたパスワード入力であることを確認するアサーションを録画します。値の確認はレコーダーパネルで設定できます。',
         assertSelectOptions: 'select 要素を選択し、現在の選択肢一覧を確認するアサーションを録画します。',
         assertAria: '領域を選択し、アクセシビリティ構造の ARIA snapshot アサーションを録画します。',
         recordScroll: 'オンにすると、ほかの録画モードを有効にしなくてもページスクロールを録画します。',
