@@ -39,6 +39,12 @@ type CompanionCommand =
     processId?: number;
   }
   | {
+    kind: 'activateWindowByProcessId';
+    sessionId: string;
+    processId: number;
+    titlePrefix?: string;
+  }
+  | {
     kind: 'restoreToolWindow';
     sessionId: string;
   }
@@ -178,6 +184,17 @@ export class WindowsTopmostCompanion {
       sessionId: this._sessionId,
       titlePrefix,
       processId: typeof processId === 'number' && processId > 0 ? processId : undefined,
+    });
+  }
+
+  async activateWindowByProcessId(processId: number | undefined, titlePrefix?: string): Promise<void> {
+    if (this._disposed || typeof processId !== 'number' || processId <= 0)
+      return;
+    await this._send({
+      kind: 'activateWindowByProcessId',
+      sessionId: this._sessionId,
+      processId,
+      titlePrefix: titlePrefix?.trim() || undefined,
     });
   }
 

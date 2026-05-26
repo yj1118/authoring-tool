@@ -315,6 +315,7 @@ export class RecorderApp {
           },
         });
       }
+      await recorderApp.activate();
     }
     (inspectedContext as any).recorderAppForTest = recorderApp;
   }
@@ -331,7 +332,7 @@ export class RecorderApp {
     recorder.on(RecorderEvent.PageNavigated, (url: string) => {
       this._frontend.pageNavigated({ url });
       if (this._authoringModeConfig?.dockWindows && this._inspectedContext)
-        void dockAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
+        void this._coordinateAuthoringWindows().catch(() => {});
     });
 
     recorder.on(RecorderEvent.ContextClosed, () => {
@@ -440,13 +441,24 @@ export class RecorderApp {
   }
 
   async activate() {
+    await this._coordinateAuthoringWindows();
+  }
+
+  private async _coordinateAuthoringWindows() {
     const inspectedPage = this._inspectedContext?.pages()[0];
-    const browserProcessId = this._inspectedContext?._browser.options.browserProcess.process?.pid;
     await restoreWindowIfMinimized(inspectedPage).catch(() => {});
     if (this._authoringModeConfig?.dockWindows && this._inspectedContext)
       await dockAuthoringWindows(this._inspectedContext, this._page).catch(() => {});
+    await this._activateInspectedBrowserWindow(inspectedPage);
+  }
+
+  private async _activateInspectedBrowserWindow(inspectedPage: Page | undefined) {
+    const browserProcessId = this._inspectedContext?._browser.options.browserProcess.process?.pid;
     const browserTitle = await inspectedPage?.mainFrame().title(nullProgress).catch(() => '') || '';
-    await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle, browserProcessId).catch(() => {});
+    if (browserProcessId)
+      await this._windowsTopmostCompanion?.activateWindowByProcessId(browserProcessId, browserTitle).catch(() => {});
+    else
+      await this._windowsTopmostCompanion?.activateWindowByTitlePrefix(browserTitle).catch(() => {});
     await inspectedPage?.bringToFront(nullProgress).catch(() => {});
   }
 
