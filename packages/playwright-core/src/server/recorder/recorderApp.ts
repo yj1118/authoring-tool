@@ -35,10 +35,12 @@ import { computeAuthoringDockLayout as computeAuthoringDockLayoutFromMetrics, no
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
 import { AuthoringSingleton } from './authoringSingleton';
 import { getRecordingLaunchContext, saveRecordingThroughClient, updateRecordingLaunchContext } from './recordingAuthoringPersistence';
+import { hydrateRecordingAuthoringModel } from '@recorder/recorder/authoringModel/authoringModelHydrator';
+import { mergeRecordedSourceBaselines } from '@recorder/recorder/sources/recordedSourceMerge';
 
 import type { Page } from '../page';
 import type * as actions from '@recorder/actions';
-import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, RecorderLocale, Source } from '@recorder/recorderTypes';
+import type { CallLog, ElementInfo, Mode, RecorderBackend, RecorderFrontend, RecorderLocale, RecordingLaunchContext, Source } from '@recorder/recorderTypes';
 import type { Language, LanguageGeneratorOptions } from '../codegen/types';
 import type * as channels from '@protocol/channels';
 import type { Progress } from '../progress';
@@ -61,6 +63,8 @@ export class RecorderApp {
   private _actions: actions.ActionInContext[] = [];
   private _userSources: Source[] = [];
   private _recorderSources: Source[] = [];
+  private _recordingAuthoringBaseSources: Source[] = [];
+  private _recordingAuthoringBaseKey: string | undefined;
   private _primaryGeneratorId: string;
   private _selectedGeneratorId: string;
   private _frontend: RecorderFrontend;
@@ -158,6 +162,8 @@ export class RecorderApp {
     const dispatcher: RecorderBackend = {
       clear: async () => {
         this._actions = [];
+        this._recordingAuthoringBaseSources = [];
+        this._recordingAuthoringBaseKey = undefined;
         this._updateActions('reveal');
         this._recorder.clear();
       },
@@ -202,7 +208,9 @@ export class RecorderApp {
         await inspectedContext.close(nullProgress, { reason: 'Selector authoring finished from tool window' });
       },
       getRecordingLaunchContext: async () => {
-        return getRecordingLaunchContext();
+        const launchContext = getRecordingLaunchContext();
+        this._setRecordingAuthoringBaseSources(launchContext);
+        return launchContext;
       },
       switchRecordingLaunchContext: async (params: { launchContext: unknown }) => {
         return await this.switchRecordingLaunchContext(params.launchContext);
@@ -385,6 +393,17 @@ export class RecorderApp {
     this._revealSource(pausedSourceId);
   }
 
+  private _setRecordingAuthoringBaseSources(launchContext: RecordingLaunchContext | null | undefined) {
+    const nextKey = recordingAuthoringBaseKey(launchContext);
+    if (this._recordingAuthoringBaseKey === nextKey)
+      return;
+    this._recordingAuthoringBaseKey = nextKey;
+    this._recordingAuthoringBaseSources = launchContext
+      ? hydrateRecordingAuthoringModel(launchContext.initialAuthoringModel).sources
+      : [];
+    this._updateActions('reveal');
+  }
+
   private _pushAllSources() {
     const sources = [...this._userSources, ...this._recorderSources];
     this._frontend.sourcesUpdated({ sources });
@@ -423,7 +442,7 @@ export class RecorderApp {
         revealSourceId = source.id;
     }
 
-    this._recorderSources = recorderSources;
+    this._recorderSources = mergeRecordedSourceBaselines(this._recordingAuthoringBaseSources, recorderSources);
     this._pushAllSources();
     this._revealSource(revealSourceId);
   }
@@ -472,6 +491,7 @@ export class RecorderApp {
     this._actions = [];
     this._userSources = [];
     this._recorderSources = [];
+    this._setRecordingAuthoringBaseSources(launchContext);
     this._recorder.clear();
     this._updateActions('reveal');
     this._frontend.recordingLaunchContextChanged({ launchContext });
@@ -487,6 +507,16 @@ function determinePrimaryGeneratorId(sdkLanguage: Language): string {
       return language.id;
   }
   return sdkLanguage;
+}
+
+function recordingAuthoringBaseKey(launchContext: RecordingLaunchContext | null | undefined): string | undefined {
+  if (!launchContext)
+    return undefined;
+  const model = launchContext?.initialAuthoringModel;
+  if (!model?.actions.length)
+    return undefined;
+  const actionSignature = model.actions.map(action => `${action.actionId}:${action.actionText}`).join('\u001f');
+  return `${JSON.stringify(launchContext.target)}\u001e${model.sourceId}\u001e${model.createdAt}\u001e${actionSignature}`;
 }
 
 export class ProgrammaticRecorderApp {

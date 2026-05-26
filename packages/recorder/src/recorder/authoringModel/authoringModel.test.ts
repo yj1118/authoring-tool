@@ -11,6 +11,7 @@ import type { RecordingAuthoringModelV1, Source } from '../../recorderTypes';
 import { buildRecordingAuthoringModel } from './authoringModelBuilder';
 import { hydrateRecordingAuthoringModel, isRecordingAuthoringModel } from './authoringModelHydrator';
 import { RECORDING_AUTHORING_MODEL_SCHEMA } from './authoringModelTypes';
+import { mergeRecordedSourceBaselines } from '../sources/recordedSourceMerge';
 
 const recordedSource: Source = {
   isRecorded: true,
@@ -91,4 +92,49 @@ test('hydrateRecordingAuthoringModel restores action ids and drafts for recorder
     expanded: false,
     confirmed: true,
   });
+});
+
+test('mergeRecordedSourceBaselines appends newly recorded actions to restored actions', () => {
+  const currentSource: Source = {
+    isRecorded: true,
+    id: 'playwright-test',
+    label: 'Playwright Test',
+    text: '',
+    language: 'javascript',
+    highlight: [],
+    actions: [
+      "await page.getByText('C').click();",
+    ],
+  };
+
+  const [merged] = mergeRecordedSourceBaselines([recordedSource], [currentSource]);
+
+  assert.deepEqual(merged?.actions, [
+    "await page.getByText('A').click();",
+    "await expect(page.getByLabel('Name')).toHaveValue('old');",
+    "await page.getByText('C').click();",
+  ]);
+  assert.deepEqual(merged?.actionIds, ['action-a', 'action-b']);
+});
+
+test('mergeRecordedSourceBaselines does not duplicate a restored prefix', () => {
+  const currentSource: Source = {
+    isRecorded: true,
+    id: 'playwright-test',
+    label: 'Playwright Test',
+    text: '',
+    language: 'javascript',
+    highlight: [],
+    actions: [
+      "await page.getByText('A').click();",
+      "await expect(page.getByLabel('Name')).toHaveValue('old');",
+      "await page.getByText('C').click();",
+    ],
+    actionIds: ['action-a', 'action-b', 'action-c'],
+  };
+
+  const [merged] = mergeRecordedSourceBaselines([recordedSource], [currentSource]);
+
+  assert.deepEqual(merged?.actions, currentSource.actions);
+  assert.deepEqual(merged?.actionIds, currentSource.actionIds);
 });
