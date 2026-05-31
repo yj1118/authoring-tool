@@ -23,6 +23,28 @@ type UploadInputResolution = {
   input: HTMLInputElement;
 };
 
+export function buildUploadFilesAction(recorder: Recorder, target: Element): actions.UploadFilesAction | null {
+  const resolution = resolveUploadInputTarget(target);
+  if (!resolution)
+    return null;
+  return uploadFilesActionForInput(recorder, resolution.input);
+}
+
+export function buildUploadFilesHighlight(recorder: Recorder, target: Element): HighlightModelWithSelector | null {
+  const resolution = resolveUploadInputTarget(target);
+  if (!resolution)
+    return null;
+  const generated = recorder.injectedScript.generateSelector(resolution.input, { testIdAttributeName: recorder.state.testIdAttributeName });
+  if (!generated.selector)
+    return null;
+  return {
+    selector: generated.selector,
+    elements: [resolution.input],
+    color: uploadFilesHighlightColor,
+    tooltipText: generated.selector,
+  };
+}
+
 export class UploadFilesTool implements RecorderTool {
   private _hoverHighlight: HighlightModelWithSelector | null = null;
   private _recorder: Recorder;
@@ -83,30 +105,11 @@ export class UploadFilesTool implements RecorderTool {
     const target = this._targetInput();
     if (!target)
       return null;
-    const generated = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
-    if (!generated.selector)
-      return null;
-    return {
-      name: 'uploadFiles',
-      selector: generated.selector,
-      signals: [],
-      acceptsMultiple: target.multiple,
-    };
+    return uploadFilesActionForInput(this._recorder, target);
   }
 
   private _buildHighlight(target: Element): HighlightModelWithSelector | null {
-    const resolution = resolveUploadInputTarget(target);
-    if (!resolution)
-      return null;
-    const generated = this._recorder.injectedScript.generateSelector(resolution.input, { testIdAttributeName: this._recorder.state.testIdAttributeName });
-    if (!generated.selector)
-      return null;
-    return {
-      selector: generated.selector,
-      elements: [resolution.input],
-      color: uploadFilesHighlightColor,
-      tooltipText: generated.selector,
-    };
+    return buildUploadFilesHighlight(this._recorder, target);
   }
 
   private _commitUploadTarget() {
@@ -118,6 +121,18 @@ export class UploadFilesTool implements RecorderTool {
     this._recorder.setMode('recording');
     this._recorder.overlay?.flashToolSucceeded(mode);
   }
+}
+
+function uploadFilesActionForInput(recorder: Recorder, input: HTMLInputElement): actions.UploadFilesAction | null {
+  const generated = recorder.injectedScript.generateSelector(input, { testIdAttributeName: recorder.state.testIdAttributeName });
+  if (!generated.selector)
+    return null;
+  return {
+    name: 'uploadFiles',
+    selector: generated.selector,
+    signals: [],
+    acceptsMultiple: input.multiple,
+  };
 }
 
 function resolveUploadInputTarget(target: Element): UploadInputResolution | null {

@@ -20,7 +20,7 @@ import clipPaths from './clipPaths';
 import { CheckedStateAssertionTool } from './checkedStateAssertionTool';
 import { DisabledStateAssertionTool } from './disabledStateAssertionTool';
 import { PasswordInputAssertionTool } from './passwordInputAssertionTool';
-import { UploadFilesTool } from './uploadFilesTool';
+import { buildUploadFilesAction, UploadFilesTool } from './uploadFilesTool';
 
 import type { Point } from '@isomorphic/types';
 import type { AriaSnapshot } from '../ariaSnapshot';
@@ -373,6 +373,8 @@ class RecordActionTool implements RecorderTool {
       return;
     if (this._actionInProgress(event))
       return;
+    if (!event.button && this._recordUploadActionIfNeeded(event))
+      return;
     if (this._consumedDueToNoModel(event, this._hoveredModel))
       return;
 
@@ -421,6 +423,10 @@ class RecordActionTool implements RecorderTool {
     // Only allow double click dispatch while action is in progress.
     if (this._actionInProgress(event))
       return;
+    if (!event.button && buildUploadFilesAction(this._recorder, this._recorder.deepEventTarget(event))) {
+      consumeEvent(event);
+      return;
+    }
     if (this._consumedDueToNoModel(event, this._hoveredModel))
       return;
 
@@ -710,6 +716,17 @@ class RecordActionTool implements RecorderTool {
     const anchorBox = this._recorder.highlight.firstTooltipBox() || model.elements[0].getBoundingClientRect();
     const dialogPosition = this._recorder.highlight.tooltipPosition(anchorBox, dialogElement);
     this._dialog.moveTo(dialogPosition.anchorTop, dialogPosition.anchorLeft);
+  }
+
+  private _recordUploadActionIfNeeded(event: MouseEvent): boolean {
+    const action = buildUploadFilesAction(this._recorder, this._recorder.deepEventTarget(event));
+    if (!action)
+      return false;
+    this._cancelPendingClickAction();
+    consumeEvent(event);
+    this._recordAction(action);
+    this._recorder.overlay?.flashToolSucceeded('uploadingFiles');
+    return true;
   }
 
   private _resetHoveredModel() {
