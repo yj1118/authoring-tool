@@ -15,6 +15,8 @@
  */
 
 import type * as React from 'react';
+import type * as actions from '../../actions';
+import type { RecordingLaunchContext, RecordingUploadAssetsApplyRequest, RecordingUploadAssetsApplyResult } from '../../recorderTypes';
 
 export type RecorderInstructionLabels = {
   checkedAssertionTitle: string;
@@ -46,6 +48,13 @@ export type RecorderInstructionLabels = {
   confirmed: string;
   needsConfirmation: string;
   confirmBeforeSave: string;
+  uploadAssetTitle: string;
+  uploadAssetHelp: string;
+  uploadAssetSingleFileOnly: string;
+  uploadAssetNoBoundAssets: string;
+  uploadAssetSelectBeforeConfirm: string;
+  uploadAssetApplying: string;
+  uploadAssetApplyFailed: string;
 };
 
 export type RecorderInstructionDraft = {
@@ -64,8 +73,12 @@ export type RecorderInstructionPanelProps<TConfig> = {
   expanded: boolean;
   confirmed: boolean;
   labels: RecorderInstructionLabels;
+  launchContext: RecordingLaunchContext | null;
+  actionContext?: actions.ActionInContext;
+  actionTargetExpression?: string;
+  applyUploadAssetsToCurrentInput?: (request: RecordingUploadAssetsApplyRequest) => Promise<RecordingUploadAssetsApplyResult>;
   onChange: (config: TConfig) => void;
-  onConfirm: () => void;
+  onConfirm: (config?: TConfig) => void;
   onEdit: () => void;
   onReset: () => void;
 };

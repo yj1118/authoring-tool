@@ -16,12 +16,14 @@
 
 import type { Language } from '../../playwright-core/src/utils/isomorphic/locatorGenerators';
 import type { AriaTemplateNode } from '@isomorphic/ariaSnapshot';
+import type * as actions from './actions';
 
 export type Point = { x: number; y: number };
 
 export type Mode =
   | 'inspecting'
   | 'recording'
+  | 'uploadingFiles'
   | 'none'
   | 'assertingText'
   | 'assertingSelectOptions'
@@ -102,6 +104,8 @@ export type Source = {
   footer?: string;
   actions?: string[];
   actionIds?: string[];
+  actionContexts?: actions.ActionInContext[];
+  actionTargetExpressions?: (string | null)[];
 };
 
 export type RecorderLocale = 'en' | 'zh-CN' | 'zh-TW' | 'ja-JP';
@@ -150,6 +154,8 @@ export type RecordingAuthoringInstructionDraftV1 = {
 export type RecordingAuthoringActionV1 = {
   actionId: string;
   actionText: string;
+  actionContext?: actions.ActionInContext;
+  actionTargetExpression?: string;
   instructionDraft?: RecordingAuthoringInstructionDraftV1 | null;
 };
 
@@ -162,6 +168,24 @@ export type RecordingAuthoringModelV1 = {
     name?: string;
     version?: string;
   };
+};
+
+export type RecordingUploadAssetOption = {
+  assetPath: string;
+  displayName: string;
+  sizeBytes?: number;
+  updatedAt?: string;
+  boundStepIds: string[];
+};
+
+export type RecordingUploadAssetsApplyRequest = {
+  actionContext: actions.ActionInContext;
+  assetPaths: string[];
+};
+
+export type RecordingUploadAssetsApplyResult = {
+  ok: true;
+  appliedAssetPaths: string[];
 };
 
 export type RecordingLaunchContext = {
@@ -179,6 +203,7 @@ export type RecordingLaunchContext = {
   recordingBridgeBaseUrl?: string;
   recordingBridgeToken?: string;
   initialAuthoringModel?: RecordingAuthoringModelV1 | null;
+  availableUploadAssets?: RecordingUploadAssetOption[];
 };
 
 export type RecordingSaveRequest = {
@@ -237,6 +262,7 @@ export interface RecorderBackend {
   closeSelectorAuthoringSession(): Promise<void>;
   getRecordingLaunchContext(): Promise<RecordingLaunchContext | null>;
   switchRecordingLaunchContext(params: { launchContext: RecordingLaunchContext }): Promise<RecordingLaunchContext | null>;
+  applyUploadAssetsToCurrentInput(params: RecordingUploadAssetsApplyRequest): Promise<RecordingUploadAssetsApplyResult>;
   saveRecording(params: RecordingSaveRequest): Promise<RecordingSaveResult>;
 }
 

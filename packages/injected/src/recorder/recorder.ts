@@ -20,6 +20,7 @@ import clipPaths from './clipPaths';
 import { CheckedStateAssertionTool } from './checkedStateAssertionTool';
 import { DisabledStateAssertionTool } from './disabledStateAssertionTool';
 import { PasswordInputAssertionTool } from './passwordInputAssertionTool';
+import { UploadFilesTool } from './uploadFilesTool';
 
 import type { Point } from '@isomorphic/types';
 import type { AriaSnapshot } from '../ariaSnapshot';
@@ -1358,6 +1359,7 @@ class Overlay {
           'standby': 'inspecting',
           'recording': 'recording-inspecting',
           'recording-inspecting': 'recording',
+          'uploadingFiles': 'recording-inspecting',
           'scrollIntoView': 'recording-inspecting',
           'assertingText': 'recording-inspecting',
           'assertingVisibility': 'recording-inspecting',
@@ -1398,7 +1400,7 @@ class Overlay {
   setCandidateSelector(_selector: string | undefined) {
   }
 
-  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingChecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'scrollIntoView') {
+  flashToolSucceeded(_tool: 'assertingVisibility' | 'assertingDisabled' | 'assertingChecked' | 'assertingText' | 'assertingSnapshot' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'scrollIntoView' | 'uploadingFiles') {
     this._pickLocatorToggle.classList.add('succeeded');
     this._recorder.injectedScript.utils.builtins.setTimeout(() => this._pickLocatorToggle.classList.remove('succeeded'), 800);
   }
@@ -1492,6 +1494,7 @@ export class Recorder {
       'standby': new NoneTool(),
       'inspecting': new InspectTool(this, 'pickSelector'),
       'recording': options?.recorderMode === 'api' ? new JsonRecordActionTool(this) : new RecordActionTool(this),
+      'uploadingFiles': new UploadFilesTool(this),
       'recording-inspecting': new InspectTool(this, 'pickSelector'),
       'scrollIntoView': new InspectTool(this, 'scrollIntoView'),
       'assertingText': new TextAssertionTool(this, 'text'),

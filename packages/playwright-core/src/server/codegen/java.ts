@@ -120,6 +120,8 @@ export class JavaLanguageGenerator implements LanguageGenerator {
         return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.fill(${quote(action.text)});`;
       case 'setInputFiles':
         return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.setInputFiles(${formatPath(action.files.length === 1 ? action.files[0] : action.files)});`;
+      case 'uploadFiles':
+        return `// TestBot upload assets action: ${JSON.stringify({ acceptsMultiple: action.acceptsMultiple, assetPaths: [] })}`;
       case 'press': {
         const modifiers = toKeyboardModifiers(action.modifiers);
         const shortcut = [...modifiers, action.key].join('+');

@@ -15,6 +15,7 @@
  */
 
 import type { ParsedActionOperation, ParsedAssertionOperation } from './parsing';
+import type * as actions from '../../../actions';
 
 export type OperationBlockKind = 'action' | 'assertion' | 'scroll';
 
@@ -25,6 +26,8 @@ export type OperationBlockContext = {
   targetVariable: string;
   assertion: ParsedAssertionOperation | null;
   action: ParsedActionOperation | null;
+  actionContext?: actions.ActionInContext;
+  actionTargetExpression?: string;
 };
 
 export type OperationBlockGenerator = {

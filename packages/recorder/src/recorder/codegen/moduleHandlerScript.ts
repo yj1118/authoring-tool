@@ -25,6 +25,12 @@ export const DEFAULT_RECORDING_SCRIPT_TIMEOUT_MS = 120_000;
 export const RECORDING_RUNTIME_API_NAME = 'testbot-recording-runtime';
 export const RECORDING_RUNTIME_API_VERSION = 1;
 
+type RecordedActionEntry = {
+  actionText: string;
+  actionContext?: NonNullable<Source['actionContexts']>[number];
+  actionTargetExpression?: string;
+};
+
 function chooseRecordedSource(sources: Source[]): Source | null {
   return sources.find(source => source.isRecorded && source.id === 'playwright-test')
     ?? sources.find(source => source.isRecorded && source.actions?.length)
@@ -40,9 +46,13 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
     });
   }
 
-  const actions = (source.actions ?? [])
-      .map(normalizeActionBlock)
-      .filter(Boolean);
+  const actions: RecordedActionEntry[] = (source.actions ?? [])
+      .map((actionText, index) => ({
+        actionText: normalizeActionBlock(actionText),
+        actionContext: source.actionContexts?.[index],
+        actionTargetExpression: source.actionTargetExpressions?.[index] ?? undefined,
+      }))
+      .filter(action => Boolean(action.actionText));
   if (!actions.length) {
     throw createRecordingAuthoringError({
       reasonCode: recordingReasonCodes.codegenFailed,
@@ -51,12 +61,12 @@ export function generateModuleHandlerScriptFromSources(sources: Source[]): Gener
   }
 
   for (const action of actions)
-    validateRecordedActionBlock(action);
+    validateRecordedActionBlock(action.actionText);
 
-  const assertionCount = actions.filter(isAssertionAction).length;
+  const assertionCount = actions.filter(action => isAssertionAction(action.actionText)).length;
   const actionCount = actions.length - assertionCount;
   const actionBlocks = actions
-      .map((action, index) => buildRunOperationBlock(action, index + 1))
+      .map((action, index) => buildRunOperationBlock(action.actionText, index + 1, action.actionContext, action.actionTargetExpression))
       .map(action => indentBlock(action, 2))
       .join('\n\n');
 

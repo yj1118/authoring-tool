@@ -29,11 +29,22 @@ export function buildActionModeButtons(i18n: {
     record: string;
     locate: string;
   };
+  status: {
+    uploading: string;
+  };
 }): RecorderModeButton[] {
+  const uploadLabel = uploadButtonLabel(i18n.status.uploading);
   return [
     { mode: 'recording', label: i18n.record, tooltip: i18n.tooltip.record },
     { mode: 'scrollIntoView', label: i18n.locate, tooltip: i18n.tooltip.locate },
+    { mode: 'uploadingFiles', label: uploadLabel, tooltip: uploadLabel },
   ];
+}
+
+function uploadButtonLabel(uploadingLabel: string): string {
+  if (uploadingLabel === 'uploading')
+    return 'Upload';
+  return uploadingLabel.replace(/中$/u, '') || uploadingLabel;
 }
 
 export function buildAssertionModeButtons(i18n: {

@@ -64,6 +64,7 @@ export const RecorderAuthoringApp: React.FC = () => {
   const [mode, setMode] = React.useState<Mode>('none');
   const [sources, setSources] = React.useState<Source[]>([]);
   const [deletedActionKeys, setDeletedActionKeys] = React.useState<Set<string>>(() => new Set());
+  const [expandedActionKeys, setExpandedActionKeys] = React.useState<Set<string>>(() => new Set());
   const [instructionDrafts, setInstructionDrafts] = React.useState<RecorderInstructionDraftMap>(() => new Map());
   const [pageUrl, setPageUrl] = React.useState<string | undefined>();
   const [launchContext, setLaunchContext] = React.useState<RecordingLaunchContext | null>(null);
@@ -194,6 +195,25 @@ export const RecorderAuthoringApp: React.FC = () => {
     : previewActions.length
       ? generatedSummary.message
       : i18n.recordAtLeastOneActionOrAssertion;
+
+  React.useEffect(() => {
+    const currentKeys = new Set(previewActions.map(action => action.key));
+    setExpandedActionKeys(current => {
+      const next = new Set([...current].filter(key => currentKeys.has(key)));
+      return next.size === current.size && [...next].every(key => current.has(key)) ? current : next;
+    });
+  }, [previewActions]);
+
+  const toggleActionDetails = React.useCallback((key: string) => {
+    setExpandedActionKeys(current => {
+      const next = new Set(current);
+      if (next.has(key))
+        next.delete(key);
+      else
+        next.add(key);
+      return next;
+    });
+  }, []);
 
   const setRecorderMode = React.useCallback((nextMode: Mode) => {
     if (isSaving)
@@ -408,10 +428,30 @@ export const RecorderAuthoringApp: React.FC = () => {
       <div className='recorder-authoring-source-panel'>
         {generatedSummary.ok ? (
           <div className='recorder-authoring-action-list'>
-            {previewActions.map((action, index) => (
-              <div className='recorder-authoring-action-row' key={action.key}>
+            {previewActions.map((action, index) => {
+              const isExpanded = expandedActionKeys.has(action.key);
+              const summaryContent = <>
+                <code className='recorder-authoring-action-code'>{action.text}</code>
+                {action.signalNames.map(signalName => <span className='recorder-authoring-action-signal' key={signalName}>{signalName}</span>)}
+                {action.isMultiline ? <span className='recorder-authoring-action-detail-icon' aria-hidden='true'>{isExpanded ? '-' : '+'}</span> : null}
+              </>;
+              return <div className='recorder-authoring-action-row' key={action.key}>
                 <span className='recorder-authoring-action-index'>{index + 1}</span>
-                <code>{action.text}</code>
+                {action.isMultiline ? (
+                  <button
+                    aria-expanded={isExpanded}
+                    className='recorder-authoring-action-summary recorder-authoring-action-summary-button'
+                    onClick={() => toggleActionDetails(action.key)}
+                    title={action.detailText}
+                    type='button'
+                  >
+                    {summaryContent}
+                  </button>
+                ) : (
+                  <div className='recorder-authoring-action-summary' title={action.detailText}>
+                    {summaryContent}
+                  </div>
+                )}
                 <button
                   aria-label={i18n.tooltip.deleteAction}
                   className='recorder-authoring-action-delete'
@@ -422,15 +462,18 @@ export const RecorderAuthoringApp: React.FC = () => {
                 >
                   ×
                 </button>
+                {action.isMultiline && isExpanded ? <pre className='recorder-authoring-action-detail'><code>{action.detailText}</code></pre> : null}
                 <RecorderInstructionPanel
+                  applyUploadAssetsToCurrentInput={backend.applyUploadAssetsToCurrentInput}
                   disabled={isSaving}
                   draft={instructionDrafts.get(action.instructionId)}
                   entry={action}
                   labels={instructionLabels}
+                  launchContext={launchContext}
                   onChange={updateInstructionDraft}
                 />
-              </div>
-            ))}
+              </div>;
+            })}
           </div>
         ) : (
           <div className='selector-authoring-empty'>

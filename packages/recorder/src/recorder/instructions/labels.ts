@@ -47,6 +47,13 @@ const englishLabels: RecorderInstructionLabels = {
   confirmed: 'Confirmed',
   needsConfirmation: 'Needs confirmation',
   confirmBeforeSave: 'Confirm assertion settings before saving.',
+  uploadAssetTitle: 'Upload asset',
+  uploadAssetHelp: 'Select the case asset that should be uploaded into this file input.',
+  uploadAssetSingleFileOnly: 'This input accepts one file, so only one asset can be selected.',
+  uploadAssetNoBoundAssets: 'No upload assets are bound to this task.',
+  uploadAssetSelectBeforeConfirm: 'Select at least one asset before confirming this action.',
+  uploadAssetApplying: 'Applying selected files to the current page...',
+  uploadAssetApplyFailed: 'Could not apply selected files to the current page.',
 };
 
 const simplifiedChineseLabels: RecorderInstructionLabels = {
@@ -79,6 +86,13 @@ const simplifiedChineseLabels: RecorderInstructionLabels = {
   confirmed: '已确认',
   needsConfirmation: '待确认',
   confirmBeforeSave: '请先确认断言配置，再保存。',
+  uploadAssetTitle: '上传资产',
+  uploadAssetHelp: '选择要上传到这个文件输入框的用例资产。',
+  uploadAssetSingleFileOnly: '这个输入框只支持单文件，因此只能选择一个资产。',
+  uploadAssetNoBoundAssets: '没有绑定到这个任务的上传资产。',
+  uploadAssetSelectBeforeConfirm: '请先选择至少一个资产，再确认这个动作。',
+  uploadAssetApplying: '正在将选中文件应用到当前页面...',
+  uploadAssetApplyFailed: '无法将选中文件应用到当前页面。',
 };
 
 const traditionalChineseLabels: RecorderInstructionLabels = {
@@ -111,6 +125,13 @@ const traditionalChineseLabels: RecorderInstructionLabels = {
   confirmed: '已確認',
   needsConfirmation: '待確認',
   confirmBeforeSave: '請先確認斷言設定，再儲存。',
+  uploadAssetTitle: '上傳資產',
+  uploadAssetHelp: '選擇要上傳到這個檔案輸入框的用例資產。',
+  uploadAssetSingleFileOnly: '這個輸入框只支援單檔案，因此只能選擇一個資產。',
+  uploadAssetNoBoundAssets: '沒有綁定到這個任務的上傳資產。',
+  uploadAssetSelectBeforeConfirm: '請先選擇至少一個資產，再確認這個動作。',
+  uploadAssetApplying: '正在將選取檔案套用到目前頁面...',
+  uploadAssetApplyFailed: '無法將選取檔案套用到目前頁面。',
 };
 
 const japaneseLabels: RecorderInstructionLabels = {
@@ -143,6 +164,13 @@ const japaneseLabels: RecorderInstructionLabels = {
   confirmed: '確認済み',
   needsConfirmation: '確認待ち',
   confirmBeforeSave: '保存する前にアサーション設定を確認してください。',
+  uploadAssetTitle: 'アップロード資産',
+  uploadAssetHelp: 'このファイル入力にアップロードするケース資産を選択してください。',
+  uploadAssetSingleFileOnly: 'この入力は1つのファイルのみ受け付けるため、1つの資産だけ選択できます。',
+  uploadAssetNoBoundAssets: 'このタスクに紐づいたアップロード資産はありません。',
+  uploadAssetSelectBeforeConfirm: 'この操作を確定する前に、1つ以上の資産を選択してください。',
+  uploadAssetApplying: '選択したファイルを現在のページに適用しています...',
+  uploadAssetApplyFailed: '選択したファイルを現在のページに適用できませんでした。',
 };
 
 export function recorderInstructionLabels(locale: RecorderLocale): RecorderInstructionLabels {

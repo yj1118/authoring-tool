@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { asLocator } from '@isomorphic/locatorGenerators';
 import type { BrowserContextOptions } from '../../..';
 import type * as types from '../types';
 import type { LanguageGenerator, LanguageGeneratorOptions } from './types';
@@ -22,9 +23,15 @@ import type * as actions from '@recorder/actions';
 export function generateCode(actions: actions.ActionInContext[], languageGenerator: LanguageGenerator, options: LanguageGeneratorOptions) {
   const header = languageGenerator.generateHeader(options);
   const footer = languageGenerator.generateFooter(options.saveStorage);
-  const actionTexts = actions.map(a => generateActionText(languageGenerator, a, !!options.generateAutoExpect)).filter(Boolean) as string[];
+  const generatedActions = actions.flatMap(actionInContext => {
+    const actionText = generateActionText(languageGenerator, actionInContext, !!options.generateAutoExpect);
+    return actionText ? [{ actionText, actionInContext }] : [];
+  });
+  const actionTexts = generatedActions.map(action => action.actionText);
+  const actionContexts = generatedActions.map(action => action.actionInContext);
+  const actionTargetExpressions = generatedActions.map(action => actionTargetExpression(action.actionInContext) ?? null);
   const text = [header, ...actionTexts, footer].join('\n');
-  return { header, footer, actionTexts, text };
+  return { header, footer, actionTexts, actionContexts, actionTargetExpressions, text };
 }
 
 function generateActionText(generator: LanguageGenerator, action: actions.ActionInContext, generateAutoExpect: boolean): string | undefined {
@@ -47,6 +54,16 @@ function generateActionText(generator: LanguageGenerator, action: actions.Action
       text = expectText + '\n\n' + text;
   }
   return text;
+}
+
+function actionTargetExpression(actionInContext: actions.ActionInContext): string | undefined {
+  const selector = (actionInContext.action as { selector?: unknown }).selector;
+  if (typeof selector !== 'string' || !selector)
+    return undefined;
+  const frameLocators = actionInContext.frame.framePath
+      .map(frameSelector => `.${asLocator('javascript', frameSelector)}.contentFrame()`)
+      .join('');
+  return `${actionInContext.frame.pageAlias}${frameLocators}.${asLocator('javascript', selector)}`;
 }
 
 export function sanitizeDeviceOptions(device: any, options: BrowserContextOptions): BrowserContextOptions {

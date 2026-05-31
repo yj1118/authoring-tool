@@ -15,6 +15,7 @@
  */
 
 import type { ActionPreviewEntry } from '../sources/recordedSourceModel';
+import type { RecordingLaunchContext, RecordingUploadAssetsApplyRequest, RecordingUploadAssetsApplyResult } from '../../recorderTypes';
 import type { RecorderInstructionDraft, RecorderInstructionDraftMap, RecorderInstructionLabels, ResolvedRecorderInstruction } from './types';
 import * as React from 'react';
 import { assertCheckedInstructionDefinition } from './assertChecked/assertCheckedInstruction';
@@ -23,8 +24,10 @@ import { assertPasswordInputInstructionDefinition } from './assertPasswordInput/
 import { assertSelectOptionsInstructionDefinition } from './assertSelectOptions/assertSelectOptionsInstruction';
 import { assertTextInstructionDefinition } from './assertText/assertTextInstruction';
 import { assertValueInstructionDefinition } from './assertValue/assertValueInstruction';
+import { uploadAssetsInstructionDefinition } from './uploadAssets/uploadAssetsInstruction';
 
 const recorderInstructionDefinitions = [
+  uploadAssetsInstructionDefinition,
   assertCheckedInstructionDefinition,
   assertDisabledInstructionDefinition,
   assertTextInstructionDefinition,
@@ -99,10 +102,12 @@ export function hasUnconfirmedRecorderInstructions(entries: ActionPreviewEntry[]
 export const RecorderInstructionPanel: React.FC<{
   entry: ActionPreviewEntry;
   draft: RecorderInstructionDraft | undefined;
+  launchContext: RecordingLaunchContext | null;
   labels: RecorderInstructionLabels;
   disabled: boolean;
+  applyUploadAssetsToCurrentInput?: (request: RecordingUploadAssetsApplyRequest) => Promise<RecordingUploadAssetsApplyResult>;
   onChange: (instructionId: string, draft: RecorderInstructionDraft) => void;
-}> = ({ entry, draft, labels, disabled, onChange }) => {
+}> = ({ entry, draft, launchContext, labels, disabled, applyUploadAssetsToCurrentInput, onChange }) => {
   const resolved = resolveRecorderInstruction(entry.originalText);
   if (!resolved)
     return null;
@@ -116,6 +121,10 @@ export const RecorderInstructionPanel: React.FC<{
     instructionId: entry.instructionId,
     config: effectiveDraft.config,
     labels,
+    launchContext,
+    actionContext: entry.actionContext,
+    actionTargetExpression: entry.actionTargetExpression,
+    applyUploadAssetsToCurrentInput,
     disabled,
     expanded: effectiveDraft.expanded,
     confirmed: effectiveDraft.confirmed,
@@ -125,8 +134,9 @@ export const RecorderInstructionPanel: React.FC<{
       expanded: true,
       confirmed: false,
     }),
-    onConfirm: () => onChange(entry.instructionId, {
+    onConfirm: config => onChange(entry.instructionId, {
       ...effectiveDraft,
+      ...(config !== undefined ? { config } : {}),
       expanded: false,
       confirmed: true,
     }),

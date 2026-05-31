@@ -102,6 +102,8 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         return `await ${subject}.${this._asLocator(action.selector)}.fill(${quote(action.text)});`;
       case 'setInputFiles':
         return `await ${subject}.${this._asLocator(action.selector)}.setInputFiles(${formatObject(action.files.length === 1 ? action.files[0] : action.files)});`;
+      case 'uploadFiles':
+        return `await ${subject}.${this._asLocator(action.selector)}.testbotUploadAssets(${formatObject({ acceptsMultiple: action.acceptsMultiple, assetPaths: [] })});`;
       case 'press': {
         const modifiers = toKeyboardModifiers(action.modifiers);
         const shortcut = [...modifiers, action.key].join('+');

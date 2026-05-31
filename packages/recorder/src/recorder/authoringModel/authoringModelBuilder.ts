@@ -30,6 +30,8 @@ export function buildRecordingAuthoringModel(input: {
       return {
         actionId: entry.key,
         actionText: input.actionTextOverrides.get(entry.key) ?? entry.originalText,
+        ...(entry.actionContext ? { actionContext: entry.actionContext } : {}),
+        ...(entry.actionTargetExpression ? { actionTargetExpression: entry.actionTargetExpression } : {}),
         ...(draft ? { instructionDraft: draft } : {}),
       };
     }),

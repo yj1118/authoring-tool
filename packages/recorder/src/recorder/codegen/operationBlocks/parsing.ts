@@ -210,6 +210,8 @@ export function parseAssertionOperation(actionText: string): ParsedAssertionOper
 
 export function parseActionOperation(actionText: string): ParsedActionOperation | null {
   const normalized = stripAwaitStatement(actionText);
+  if (normalized.includes('\n'))
+    return null;
   const methodCall = findTopLevelMethodCall(normalized);
   if (!methodCall)
     return null;

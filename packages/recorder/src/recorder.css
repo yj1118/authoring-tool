@@ -499,10 +499,34 @@
   font-weight: 700;
 }
 
-.recorder-authoring-action-row code {
+.recorder-authoring-action-summary {
   grid-column: 2;
   grid-row: 1;
   align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.recorder-authoring-action-summary-button {
+  cursor: pointer;
+}
+
+.recorder-authoring-action-summary-button:focus-visible {
+  outline: 2px solid rgba(11, 105, 199, 0.3);
+  outline-offset: 3px;
+  border-radius: var(--sa-section-radius);
+}
+
+.recorder-authoring-action-code {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -511,6 +535,59 @@
   font-family: var(--vscode-editor-font-family);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.recorder-authoring-action-signal {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border: 1px solid rgba(11, 105, 199, 0.18);
+  border-radius: 999px;
+  background: var(--sa-accent-soft);
+  color: var(--sa-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.recorder-authoring-action-detail-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--sa-border);
+  border-radius: 999px;
+  background: var(--sa-surface-bg);
+  color: var(--sa-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.recorder-authoring-action-detail {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  max-height: 160px;
+  min-width: 0;
+  overflow: auto;
+  padding: 9px 10px;
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-section-radius);
+  background: var(--sa-surface-bg);
+  color: var(--sa-text);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.recorder-authoring-action-detail code {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  white-space: pre;
 }
 
 .recorder-authoring-action-delete {
@@ -560,7 +637,6 @@
 
 .recorder-instruction-panel {
   grid-column: 1 / -1;
-  grid-row: 2;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -700,6 +776,44 @@
 
 .recorder-instruction-checkbox input {
   margin: 0;
+}
+
+.recorder-instruction-help {
+  color: var(--sa-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.recorder-instruction-help-danger {
+  color: var(--sa-danger);
+}
+
+.recorder-instruction-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recorder-instruction-choice {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-section-radius);
+  background: var(--sa-panel-bg);
+}
+
+.recorder-instruction-choice code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sa-muted);
+  font: 12px/1.4 var(--vscode-editor-font-family);
 }
 
 .recorder-instruction-radio-group {

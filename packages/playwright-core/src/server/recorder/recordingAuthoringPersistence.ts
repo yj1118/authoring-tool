@@ -54,6 +54,39 @@ function normalizeHeaders(value: unknown): Record<string, string> | undefined {
   return Object.keys(headers).length ? headers : undefined;
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
+    : [];
+}
+
+function normalizeAvailableUploadAssets(value: unknown): RecordingLaunchContext['availableUploadAssets'] {
+  if (!Array.isArray(value))
+    return undefined;
+
+  const assets: NonNullable<RecordingLaunchContext['availableUploadAssets']> = [];
+  const seen = new Set<string>();
+  for (const rawAsset of value) {
+    if (!isRecord(rawAsset))
+      continue;
+    const assetPath = normalizeOptionalString(rawAsset.assetPath);
+    if (!assetPath || seen.has(assetPath))
+      continue;
+    seen.add(assetPath);
+    const displayName = normalizeOptionalString(rawAsset.displayName) ?? assetPath;
+    assets.push({
+      assetPath,
+      displayName,
+      ...(typeof rawAsset.sizeBytes === 'number' && Number.isFinite(rawAsset.sizeBytes) && rawAsset.sizeBytes >= 0
+        ? { sizeBytes: rawAsset.sizeBytes }
+        : {}),
+      ...(normalizeOptionalString(rawAsset.updatedAt) ? { updatedAt: normalizeOptionalString(rawAsset.updatedAt) } : {}),
+      boundStepIds: normalizeStringArray(rawAsset.boundStepIds),
+    });
+  }
+  return assets.length ? assets : undefined;
+}
+
 export function resolveRecordingLaunchClientBaseUrl(parsed: Record<string, unknown>): string | undefined {
   return normalizeOptionalString(parsed.clientBaseUrl)
     ?? normalizeOptionalString(process.env.AUTHORING_TOOL_CLIENT_BASE_URL);
@@ -85,6 +118,7 @@ function parseLaunchContextPayload(parsed: unknown): RecordingLaunchContext | nu
     recordingBridgeBaseUrl: normalizeOptionalString(parsed.recordingBridgeBaseUrl),
     recordingBridgeToken: normalizeOptionalString(parsed.recordingBridgeToken),
     initialAuthoringModel: isRecordingAuthoringModel(parsed.initialAuthoringModel) ? parsed.initialAuthoringModel : null,
+    availableUploadAssets: normalizeAvailableUploadAssets(parsed.availableUploadAssets),
   };
 }
 

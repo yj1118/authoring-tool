@@ -35,6 +35,7 @@ import { computeAuthoringDockLayout as computeAuthoringDockLayoutFromMetrics, no
 import { WindowsTopmostCompanion } from './windowsTopmostCompanion';
 import { AuthoringSingleton } from './authoringSingleton';
 import { getRecordingLaunchContext, saveRecordingThroughClient, updateRecordingLaunchContext } from './recordingAuthoringPersistence';
+import { applyUploadAssetsToCurrentInput } from './recordingUploadAssets';
 import { hydrateRecordingAuthoringModel } from '@recorder/recorder/authoringModel/authoringModelHydrator';
 import { mergeRecordedSourceBaselines } from '@recorder/recorder/sources/recordedSourceMerge';
 
@@ -214,6 +215,13 @@ export class RecorderApp {
       },
       switchRecordingLaunchContext: async (params: { launchContext: unknown }) => {
         return await this.switchRecordingLaunchContext(params.launchContext);
+      },
+      applyUploadAssetsToCurrentInput: async params => {
+        return await applyUploadAssetsToCurrentInput({
+          inspectedContext,
+          launchContext: getRecordingLaunchContext(),
+          request: params,
+        });
       },
       saveRecording: async params => {
         return await saveRecordingThroughClient(params);
@@ -421,7 +429,7 @@ export class RecorderApp {
 
     let revealSourceId: string | undefined;
     for (const languageGenerator of languageSet()) {
-      const { header, footer, actionTexts, text } = generateCode(actions, languageGenerator, this._languageGeneratorOptions);
+      const { header, footer, actionTexts, actionContexts, actionTargetExpressions, text } = generateCode(actions, languageGenerator, this._languageGeneratorOptions);
       const source: Source = {
         isRecorded: true,
         label: languageGenerator.name,
@@ -431,6 +439,8 @@ export class RecorderApp {
         header,
         footer,
         actions: actionTexts,
+        actionContexts,
+        actionTargetExpressions,
         language: languageGenerator.highlighter,
         highlight: []
       };

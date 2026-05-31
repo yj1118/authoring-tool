@@ -37,6 +37,8 @@ export function hydrateRecordingAuthoringModel(model: RecordingAuthoringModelV1 
       .map(action => ({
         actionId: action.actionId.trim(),
         actionText: action.actionText,
+        actionContext: action.actionContext,
+        actionTargetExpression: action.actionTargetExpression,
         instructionDraft: action.instructionDraft,
       }));
   if (!actions.length) {
@@ -52,6 +54,9 @@ export function hydrateRecordingAuthoringModel(model: RecordingAuthoringModelV1 
       instructionDrafts.set(action.actionId, action.instructionDraft);
   }
 
+  const actionContexts = actions.map(action => action.actionContext).filter(Boolean) as NonNullable<Source['actionContexts']>;
+  const actionTargetExpressions = actions.map(action => action.actionTargetExpression).filter(Boolean) as string[];
+
   return {
     sources: [{
       isRecorded: true,
@@ -62,6 +67,8 @@ export function hydrateRecordingAuthoringModel(model: RecordingAuthoringModelV1 
       highlight: [],
       actions: actions.map(action => action.actionText),
       actionIds: actions.map(action => action.actionId),
+      ...(actionContexts.length === actions.length ? { actionContexts } : {}),
+      ...(actionTargetExpressions.length === actions.length ? { actionTargetExpressions } : {}),
     }],
     instructionDrafts,
   };

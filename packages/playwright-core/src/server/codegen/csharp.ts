@@ -142,6 +142,8 @@ export class CSharpLanguageGenerator implements LanguageGenerator {
         return `await ${subject}.${this._asLocator(action.selector)}.FillAsync(${quote(action.text)});`;
       case 'setInputFiles':
         return `await ${subject}.${this._asLocator(action.selector)}.SetInputFilesAsync(${formatObject(action.files)});`;
+      case 'uploadFiles':
+        return `// TestBot upload assets action: ${JSON.stringify({ acceptsMultiple: action.acceptsMultiple, assetPaths: [] })}`;
       case 'press': {
         const modifiers = toKeyboardModifiers(action.modifiers);
         const shortcut = [...modifiers, action.key].join('+');

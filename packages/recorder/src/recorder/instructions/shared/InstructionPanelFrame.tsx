@@ -22,13 +22,14 @@ export const InstructionPanelFrame: React.FC<{
   title: string;
   labels: RecorderInstructionLabels;
   disabled: boolean;
+  confirmDisabled?: boolean;
   expanded: boolean;
   confirmed: boolean;
   onConfirm: () => void;
   onEdit: () => void;
   onReset: () => void;
   children: React.ReactNode;
-}> = ({ title, labels, disabled, expanded, confirmed, onConfirm, onEdit, onReset, children }) => {
+}> = ({ title, labels, disabled, confirmDisabled, expanded, confirmed, onConfirm, onEdit, onReset, children }) => {
   return <div className='recorder-instruction-panel'>
     <div className='recorder-instruction-panel-header'>
       <span className='recorder-instruction-panel-title'>{title}</span>
@@ -45,7 +46,7 @@ export const InstructionPanelFrame: React.FC<{
         <InstructionPanelButton disabled={disabled} onClick={onReset}>
           {labels.reset}
         </InstructionPanelButton>
-        <InstructionPanelButton disabled={disabled} onClick={onConfirm} primary>
+        <InstructionPanelButton disabled={disabled || confirmDisabled} onClick={onConfirm} primary>
           {labels.confirm}
         </InstructionPanelButton>
       </div>

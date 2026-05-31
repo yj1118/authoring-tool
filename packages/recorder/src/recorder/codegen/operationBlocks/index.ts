@@ -27,7 +27,10 @@ import { parseActionOperation, parseAssertionOperation } from './parsing';
 import { passwordInputAssertionBlockGenerator } from './passwordInputAssertionBlock';
 import { playwrightActionBlockGenerator } from './playwrightActionBlock';
 import { selectOptionsAssertionBlockGenerator } from './selectOptionsAssertionBlock';
+import { structuredActionBlockGenerator } from './structuredActionBlock';
+import { uploadAssetsBlockGenerator } from './uploadAssetsBlock';
 import type { OperationBlockContext, OperationBlockGenerator } from './types';
+import type * as actions from '../../../actions';
 
 export {
   indentBlock,
@@ -40,11 +43,13 @@ const OPERATION_BLOCK_GENERATORS: OperationBlockGenerator[] = [
   selectOptionsAssertionBlockGenerator,
   passwordInputAssertionBlockGenerator,
   genericAssertionBlockGenerator,
+  uploadAssetsBlockGenerator,
+  structuredActionBlockGenerator,
   playwrightActionBlockGenerator,
   fallbackOperationBlockGenerator,
 ];
 
-function createOperationBlockContext(actionText: string, index: number): OperationBlockContext {
+function createOperationBlockContext(actionText: string, index: number, actionContext?: actions.ActionInContext, actionTargetExpression?: string): OperationBlockContext {
   return {
     actionText,
     rewrittenActionText: rewriteRecordedActionBlockForRuntime(actionText),
@@ -52,11 +57,13 @@ function createOperationBlockContext(actionText: string, index: number): Operati
     targetVariable: `operation${index}Target`,
     assertion: parseAssertionOperation(actionText),
     action: parseActionOperation(actionText),
+    actionContext,
+    actionTargetExpression,
   };
 }
 
-export function buildRunOperationBlock(actionText: string, index: number): string {
-  const context = createOperationBlockContext(actionText, index);
+export function buildRunOperationBlock(actionText: string, index: number, actionContext?: actions.ActionInContext, actionTargetExpression?: string): string {
+  const context = createOperationBlockContext(actionText, index, actionContext, actionTargetExpression);
   const generator = OPERATION_BLOCK_GENERATORS.find(candidate => candidate.canBuild(context));
   if (!generator)
     throw new Error('No operation block generator registered.');

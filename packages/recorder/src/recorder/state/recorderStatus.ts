@@ -13,10 +13,11 @@ export type RecorderStatus =
   | { kind: 'failed'; reasonCode: string; message: string };
 
 export type RecorderStatusKey = Exclude<RecorderStatus['kind'], 'saved' | 'failed'>;
-export type RecorderCaptureMode = 'recording' | 'scrollIntoView' | 'assertingVisibility' | 'assertingDisabled' | 'assertingChecked' | 'assertingText' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'assertingSnapshot';
+export type RecorderCaptureMode = 'recording' | 'uploadingFiles' | 'scrollIntoView' | 'assertingVisibility' | 'assertingDisabled' | 'assertingChecked' | 'assertingText' | 'assertingValue' | 'assertingPasswordInput' | 'assertingSelectOptions' | 'assertingSnapshot';
 
 export function isRecorderCaptureMode(mode: Mode): mode is RecorderCaptureMode {
   return mode === 'recording'
+    || mode === 'uploadingFiles'
     || mode === 'scrollIntoView'
     || mode === 'assertingVisibility'
     || mode === 'assertingDisabled'

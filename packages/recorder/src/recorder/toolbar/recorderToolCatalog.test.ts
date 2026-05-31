@@ -17,9 +17,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildAssertionModeButtons } from './recorderToolCatalog';
+import { buildActionModeButtons, buildAssertionModeButtons } from './recorderToolCatalog';
 
 const i18n = {
+  record: 'record',
+  locate: 'locate',
   assertVisible: 'visible',
   assertDisabled: 'disabled',
   assertChecked: 'checked',
@@ -37,8 +39,28 @@ const i18n = {
     assertPasswordInput: 'password tip',
     assertSelectOptions: 'select options tip',
     assertAria: 'aria tip',
+    record: 'record tip',
+    locate: 'locate tip',
+  },
+  status: {
+    uploading: 'uploading',
   },
 };
+
+test('action toolbar places upload after locate', () => {
+  const buttons = buildActionModeButtons(i18n);
+
+  assert.deepEqual(buttons.map(button => button.mode), [
+    'recording',
+    'scrollIntoView',
+    'uploadingFiles',
+  ]);
+  assert.deepEqual(buttons.map(button => button.label), [
+    'record',
+    'locate',
+    'Upload',
+  ]);
+});
 
 test('assertion toolbar exposes merged assertion modes', () => {
   const buttons = buildAssertionModeButtons(i18n);

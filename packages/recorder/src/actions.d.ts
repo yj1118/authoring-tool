@@ -30,6 +30,7 @@ export type ActionName =
   'scrollIntoView' |
   'uncheck' |
   'setInputFiles' |
+  'uploadFiles' |
   'assertText' |
   'assertValue' |
   'assertPasswordInput' |
@@ -117,6 +118,11 @@ export type SetInputFilesAction = ActionWithSelector & {
   files: string[],
 };
 
+export type UploadFilesAction = ActionWithSelector & {
+  name: 'uploadFiles',
+  acceptsMultiple: boolean,
+};
+
 export type AssertTextAction = ActionWithSelector & {
   name: 'assertText',
   text: string,
@@ -164,7 +170,7 @@ export type AssertSnapshotAction = ActionWithSelector & {
   ariaSnapshot: string,
 };
 
-export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | AssertTextAction | AssertValueAction | AssertPasswordInputAction | AssertSelectOptionsAction | AssertCheckedAction | AssertDisabledAction | AssertVisibleAction | AssertSnapshotAction;
+export type Action = ClickAction | HoverAction | CheckAction | ClosesPageAction | OpenPageAction | UncheckAction | FillAction | NavigateAction | PressAction | SelectAction | ScrollAction | ScrollIntoViewAction | SetInputFilesAction | UploadFilesAction | AssertTextAction | AssertValueAction | AssertPasswordInputAction | AssertSelectOptionsAction | AssertCheckedAction | AssertDisabledAction | AssertVisibleAction | AssertSnapshotAction;
 export type AssertAction = AssertCheckedAction | AssertDisabledAction | AssertValueAction | AssertPasswordInputAction | AssertSelectOptionsAction | AssertTextAction | AssertVisibleAction | AssertSnapshotAction;
 export type PerformOnRecordAction = ClickAction | HoverAction | CheckAction | UncheckAction | PressAction | SelectAction;
 

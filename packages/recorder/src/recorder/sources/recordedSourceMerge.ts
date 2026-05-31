@@ -27,10 +27,14 @@ function mergeRecordedSource(base: Source, current: Source): Source {
 
   const actions = [...baseActions, ...currentActions];
   const actionIds = [...(base.actionIds ?? []), ...(current.actionIds ?? [])];
+  const actionContexts = [...(base.actionContexts ?? []), ...(current.actionContexts ?? [])];
+  const actionTargetExpressions = [...(base.actionTargetExpressions ?? []), ...(current.actionTargetExpressions ?? [])];
   return {
     ...current,
     actions,
     ...(actionIds.length ? { actionIds } : {}),
+    ...(actionContexts.length === actions.length ? { actionContexts } : {}),
+    ...(actionTargetExpressions.length === actions.length ? { actionTargetExpressions } : {}),
     text: actions.join('\n'),
   };
 }
